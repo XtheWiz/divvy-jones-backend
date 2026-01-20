@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
-import { db, users } from "../db";
+import { rateLimit } from "elysia-rate-limit";
+import { db, users, userSettings } from "../db";
 import { success, error, ErrorCodes } from "../lib/responses";
 import { jwtPlugin, generateAccessToken } from "../middleware/auth";
 import {
@@ -46,6 +47,30 @@ const refreshSchema = {
 // ============================================================================
 
 export const authRoutes = new Elysia({ prefix: "/auth" })
+  // AC-0.4: Rate limiting - 5 requests per minute per IP
+  // AC-0.5: Returns 429 Too Many Requests when exceeded
+  .use(
+    rateLimit({
+      duration: 60000, // 1 minute window
+      max: 5, // 5 requests per window
+      generator: (req) => {
+        // Use X-Forwarded-For for proxied requests, fallback to a default
+        return (
+          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          req.headers.get("x-real-ip") ||
+          "unknown"
+        );
+      },
+      errorResponse: new Response(JSON.stringify({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Too many requests. Please try again later.",
+        },
+      }), { status: 429, headers: { "Content-Type": "application/json" } }),
+      headers: true, // Include rate limit headers in response
+    })
+  )
   .use(jwtPlugin)
 
   // ========================================================================
@@ -101,6 +126,17 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
           primaryAuthProvider: "email",
         })
         .returning();
+
+      // Sprint 006 AC-1.4: Create default user preferences
+      await db.insert(userSettings).values({
+        userId: newUser.id,
+        // All defaults are set in schema, but explicit for clarity
+        pushEnabled: true,
+        emailNotifications: true,
+        notifyOnExpenseAdded: true,
+        notifyOnSettlement: true,
+        notifyOnGroupActivity: true,
+      });
 
       // AC-1.4: Generate tokens
       const tokenPayload: AccessTokenPayload = {

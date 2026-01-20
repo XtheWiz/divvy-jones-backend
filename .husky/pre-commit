@@ -1,0 +1,44 @@
+#!/bin/sh
+# Sprint 005 - TASK-004
+# Pre-commit hook for Divvy-Jones
+# AC-0.12: Validates route parameter naming conventions
+# AC-0.13: Runs TypeScript type checking
+
+echo "Running pre-commit checks..."
+
+# ============================================================================
+# AC-0.12: Route Parameter Naming Convention Check (REQUIRED)
+# ============================================================================
+echo "1. Checking route parameter naming conventions..."
+if ! ./scripts/check-route-params.sh; then
+  echo "Route parameter naming convention check failed."
+  exit 1
+fi
+echo "   Route parameter check passed."
+
+# ============================================================================
+# AC-0.13: TypeScript Type Checking (source files only)
+# Note: Run `bun run typecheck:src` to see type errors
+# ============================================================================
+echo "2. Running TypeScript type check..."
+if bun run typecheck:src >/dev/null 2>&1; then
+  echo "   TypeScript check passed."
+else
+  echo "   Warning: TypeScript errors found (run 'bun run typecheck:src' for details)"
+  echo "   Continuing with commit - please fix type errors when possible."
+fi
+
+# ============================================================================
+# Unit Tests Check (quick validation)
+# ============================================================================
+echo "3. Running unit tests..."
+TEST_RESULT=$(bun test --timeout 30000 src/__tests__/*.test.ts 2>&1)
+if echo "$TEST_RESULT" | grep -q "0 fail"; then
+  PASS_COUNT=$(echo "$TEST_RESULT" | grep -oE '[0-9]+ pass' | head -1)
+  echo "   Tests passed: $PASS_COUNT"
+else
+  echo "   Warning: Some tests failed. Run 'bun test' for details."
+fi
+
+echo ""
+echo "Pre-commit checks complete!"

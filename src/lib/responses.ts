@@ -99,6 +99,9 @@ export const ErrorCodes = {
   // Server errors
   INTERNAL_ERROR: "INTERNAL_ERROR",
   DATABASE_ERROR: "DATABASE_ERROR",
+
+  // Rate limiting
+  RATE_LIMIT_EXCEEDED: "RATE_LIMIT_EXCEEDED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

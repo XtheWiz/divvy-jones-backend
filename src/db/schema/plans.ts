@@ -41,9 +41,9 @@ export const planFeatures = pgTable(
     boolValue: boolean("bool_value"),
     textValue: text("text_value"),
   },
-  (table) => [
-    uniqueIndex("plan_features_unique_key").on(table.planId, table.key),
-  ]
+  (table) => ({
+    plan_features_unique_key: uniqueIndex("plan_features_unique_key").on(table.planId, table.key),
+  })
 );
 
 // ============================================================================
@@ -64,16 +64,16 @@ export const subscriptions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   },
-  (table) => [
-    index("idx_subscriptions_user_id").on(table.userId),
-    index("idx_subscriptions_expires_at")
+  (table) => ({
+    idx_subscriptions_user_id: index("idx_subscriptions_user_id").on(table.userId),
+    idx_subscriptions_expires_at: index("idx_subscriptions_expires_at")
       .on(table.expiresAt)
-      .where("expires_at IS NOT NULL"),
-    check(
+      .where(sql`expires_at IS NOT NULL`),
+    subscriptions_valid_dates: check(
       "subscriptions_valid_dates",
       sql`${table.expiresAt} IS NULL OR ${table.expiresAt} > ${table.startedAt}`
     ),
-  ]
+  })
 );
 
 // ============================================================================

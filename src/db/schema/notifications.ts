@@ -7,6 +7,7 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { groups, groupMembers } from "./groups";
 import { notificationType, activityAction } from "./enums";
@@ -34,13 +35,13 @@ export const notifications = pgTable(
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_notifications_user_id").on(table.userId),
-    index("idx_notifications_unread")
+  (table) => ({
+    idx_notifications_user_id: index("idx_notifications_user_id").on(table.userId),
+    idx_notifications_unread: index("idx_notifications_unread")
       .on(table.userId, table.createdAt)
-      .where("is_read = FALSE"),
-    index("idx_notifications_created_at").on(table.createdAt),
-  ]
+      .where(sql`is_read = FALSE`),
+    idx_notifications_created_at: index("idx_notifications_created_at").on(table.createdAt),
+  })
 );
 
 // ============================================================================
@@ -66,14 +67,14 @@ export const activityLog = pgTable(
     userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_activity_log_group_id").on(table.groupId),
-    index("idx_activity_log_actor")
+  (table) => ({
+    idx_activity_log_group_id: index("idx_activity_log_group_id").on(table.groupId),
+    idx_activity_log_actor: index("idx_activity_log_actor")
       .on(table.actorMemberId)
-      .where("actor_member_id IS NOT NULL"),
-    index("idx_activity_log_entity").on(table.entityType, table.entityId),
-    index("idx_activity_log_created_at").on(table.createdAt),
-  ]
+      .where(sql`actor_member_id IS NOT NULL`),
+    idx_activity_log_entity: index("idx_activity_log_entity").on(table.entityType, table.entityId),
+    idx_activity_log_created_at: index("idx_activity_log_created_at").on(table.createdAt),
+  })
 );
 
 // ============================================================================

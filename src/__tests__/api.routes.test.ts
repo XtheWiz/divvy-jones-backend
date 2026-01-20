@@ -51,7 +51,7 @@ describe("API Health Endpoint", () => {
 
   test("GET /health returns status ok", async () => {
     const response = await app.handle(new Request("http://localhost/health"));
-    const body = await response.json();
+    const body = (await response.json()) as { status: string; timestamp: string };
     expect(body.status).toBe("ok");
     expect(body).toHaveProperty("timestamp");
   });
@@ -96,9 +96,9 @@ describe("API Route Structure", () => {
     { method: "GET", path: "/v1/users/me" },
     { method: "POST", path: "/v1/groups" },
     { method: "GET", path: "/v1/groups" },
-    { method: "GET", path: "/v1/groups/:id" },
+    { method: "GET", path: "/v1/groups/:groupId" },
     { method: "POST", path: "/v1/groups/join" },
-    { method: "GET", path: "/v1/groups/:id/members" },
+    { method: "GET", path: "/v1/groups/:groupId/members" },
   ];
 
   test("all expected endpoints are documented", () => {

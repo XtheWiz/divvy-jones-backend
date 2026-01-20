@@ -12,24 +12,36 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "bun run src/db/seed.ts",
+    "db:test:setup": "./scripts/test-db-setup.sh",
+    "db:test:reset": "./scripts/test-db-reset.sh",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:src": "tsc --noEmit -p tsconfig.src.json",
+    "lint:routes": "./scripts/check-route-params.sh",
+    "prepare": "husky"
   },
   "dependencies": {
-    "elysia": "^1.0.0",
-    "@elysiajs/jwt": "^1.0.0",
+    "@aws-sdk/client-s3": "^3.971.0",
+    "@aws-sdk/s3-request-presigner": "^3.971.0",
     "@elysiajs/cors": "^1.0.0",
+    "@elysiajs/jwt": "^1.0.0",
     "@elysiajs/swagger": "^1.0.0",
-    "drizzle-orm": "^0.33.0",
-    "pg": "^8.12.0",
     "bcryptjs": "^2.4.3",
-    "nanoid": "^5.0.7"
+    "drizzle-orm": "^0.33.0",
+    "elysia": "^1.0.0",
+    "elysia-rate-limit": "^4.4.2",
+    "file-type": "^21.3.0",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^7.0.12",
+    "pg": "^8.12.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.1.0",
-    "@types/pg": "^8.11.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/bun": "^1.1.0",
+    "@types/nodemailer": "^7.0.5",
+    "@types/pg": "^8.11.0",
     "drizzle-kit": "^0.24.0",
+    "husky": "^9.1.7",
     "typescript": "^5.5.0"
   }
 }

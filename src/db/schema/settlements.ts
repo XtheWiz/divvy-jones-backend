@@ -42,22 +42,24 @@ export const settlements = pgTable(
       .notNull()
       .references(() => settlementStatus.value)
       .default("pending"),
+    note: text("note"), // AC-1.8: Optional note/description
+    settledAt: timestamp("settled_at", { withTimezone: true }), // AC-1.29: Confirmation timestamp
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_settlements_group_id").on(table.groupId),
-    index("idx_settlements_payer").on(table.payerMemberId),
-    index("idx_settlements_payee").on(table.payeeMemberId),
-    index("idx_settlements_status")
+  (table) => ({
+    idx_settlements_group_id: index("idx_settlements_group_id").on(table.groupId),
+    idx_settlements_payer: index("idx_settlements_payer").on(table.payerMemberId),
+    idx_settlements_payee: index("idx_settlements_payee").on(table.payeeMemberId),
+    idx_settlements_status: index("idx_settlements_status")
       .on(table.status)
-      .where("status = 'pending'"),
-    check(
+      .where(sql`status = 'pending'`),
+    settlements_different_members: check(
       "settlements_different_members",
       sql`${table.payerMemberId} <> ${table.payeeMemberId}`
     ),
-    check("settlements_positive_amount", sql`${table.amount} > 0`),
-  ]
+    settlements_positive_amount: check("settlements_positive_amount", sql`${table.amount} > 0`),
+  })
 );
 
 // ============================================================================
@@ -81,19 +83,19 @@ export const evidences = pgTable(
       .references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_evidences_expense_id")
+  (table) => ({
+    idx_evidences_expense_id: index("idx_evidences_expense_id")
       .on(table.expenseId)
-      .where("expense_id IS NOT NULL"),
-    index("idx_evidences_settlement_id")
+      .where(sql`expense_id IS NOT NULL`),
+    idx_evidences_settlement_id: index("idx_evidences_settlement_id")
       .on(table.settlementId)
-      .where("settlement_id IS NOT NULL"),
+      .where(sql`settlement_id IS NOT NULL`),
     // Ensure exactly one target is set
-    check(
+    evidences_single_target: check(
       "evidences_single_target",
       sql`(${table.target} = 'expense' AND ${table.expenseId} IS NOT NULL AND ${table.settlementId} IS NULL) OR (${table.target} = 'settlement' AND ${table.settlementId} IS NOT NULL AND ${table.expenseId} IS NULL)`
     ),
-  ]
+  })
 );
 
 // ============================================================================

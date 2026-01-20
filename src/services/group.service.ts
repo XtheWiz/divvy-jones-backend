@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, count, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, count, inArray } from "drizzle-orm";
 import { db, groups, groupMembers, users, type Group, type GroupMember } from "../db";
 import { customAlphabet } from "nanoid";
 
@@ -226,7 +226,7 @@ export async function getGroupsByUser(userId: string): Promise<GroupWithMemberCo
     )
     .where(
       and(
-        sql`${groups.id} IN ${groupIds}`,
+        inArray(groups.id, groupIds),
         isNull(groups.deletedAt)
       )
     )
@@ -308,4 +308,217 @@ export async function getGroupMembers(groupId: string): Promise<
     .orderBy(desc(groupMembers.joinedAt));
 
   return members;
+}
+
+// ============================================================================
+// Sprint 002 - Group Management Functions
+// ============================================================================
+
+export interface UpdateGroupInput {
+  name?: string;
+  description?: string;
+  defaultCurrencyCode?: string;
+}
+
+/**
+ * Get a member's role in a group
+ */
+export async function getMemberRole(
+  userId: string,
+  groupId: string
+): Promise<string | null> {
+  const [membership] = await db
+    .select({ role: groupMembers.role })
+    .from(groupMembers)
+    .where(
+      and(
+        eq(groupMembers.userId, userId),
+        eq(groupMembers.groupId, groupId),
+        isNull(groupMembers.leftAt)
+      )
+    )
+    .limit(1);
+
+  return membership?.role || null;
+}
+
+/**
+ * Check if user has admin privileges (owner or admin role)
+ */
+export function isAdminRole(role: string | null): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/**
+ * Update group details
+ * AC-1.1 to AC-1.6
+ */
+export async function updateGroup(
+  groupId: string,
+  input: UpdateGroupInput
+): Promise<Group | null> {
+  const updates: Partial<{
+    name: string;
+    label: string | null;
+    defaultCurrencyCode: string;
+    updatedAt: Date;
+  }> = {
+    updatedAt: new Date(),
+  };
+
+  if (input.name !== undefined) {
+    updates.name = input.name.trim();
+  }
+  if (input.description !== undefined) {
+    updates.label = input.description.trim() || null;
+  }
+  if (input.defaultCurrencyCode !== undefined) {
+    updates.defaultCurrencyCode = input.defaultCurrencyCode;
+  }
+
+  const [updated] = await db
+    .update(groups)
+    .set(updates)
+    .where(and(eq(groups.id, groupId), isNull(groups.deletedAt)))
+    .returning();
+
+  return updated || null;
+}
+
+/**
+ * Regenerate join code for a group
+ * AC-1.13 to AC-1.15
+ */
+export async function regenerateGroupJoinCode(groupId: string): Promise<string | null> {
+  const newCode = await generateJoinCode();
+
+  const [updated] = await db
+    .update(groups)
+    .set({
+      joinCode: newCode,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(groups.id, groupId), isNull(groups.deletedAt)))
+    .returning();
+
+  return updated ? newCode : null;
+}
+
+/**
+ * Count owners in a group
+ */
+export async function countGroupOwners(groupId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(groupMembers)
+    .where(
+      and(
+        eq(groupMembers.groupId, groupId),
+        eq(groupMembers.role, "owner"),
+        isNull(groupMembers.leftAt)
+      )
+    );
+
+  return result?.count || 0;
+}
+
+/**
+ * Transfer ownership to another member
+ */
+export async function transferOwnership(
+  groupId: string,
+  fromUserId: string,
+  toUserId: string
+): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    // Verify target is a member
+    const [targetMember] = await tx
+      .select()
+      .from(groupMembers)
+      .where(
+        and(
+          eq(groupMembers.groupId, groupId),
+          eq(groupMembers.userId, toUserId),
+          isNull(groupMembers.leftAt)
+        )
+      )
+      .limit(1);
+
+    if (!targetMember) {
+      return false;
+    }
+
+    // Promote target to owner
+    await tx
+      .update(groupMembers)
+      .set({ role: "owner" })
+      .where(eq(groupMembers.id, targetMember.id));
+
+    // Demote current owner to admin (or member)
+    await tx
+      .update(groupMembers)
+      .set({ role: "admin" })
+      .where(
+        and(
+          eq(groupMembers.groupId, groupId),
+          eq(groupMembers.userId, fromUserId),
+          isNull(groupMembers.leftAt)
+        )
+      );
+
+    // Update group ownerUserId
+    await tx
+      .update(groups)
+      .set({ ownerUserId: toUserId, updatedAt: new Date() })
+      .where(eq(groups.id, groupId));
+
+    return true;
+  });
+}
+
+/**
+ * Leave a group (soft delete membership)
+ * AC-1.7 to AC-1.12
+ */
+export async function leaveGroup(
+  userId: string,
+  groupId: string
+): Promise<{ success: boolean; error?: string }> {
+  const [membership] = await db
+    .select()
+    .from(groupMembers)
+    .where(
+      and(
+        eq(groupMembers.userId, userId),
+        eq(groupMembers.groupId, groupId),
+        isNull(groupMembers.leftAt)
+      )
+    )
+    .limit(1);
+
+  if (!membership) {
+    return { success: false, error: "Not a member of this group" };
+  }
+
+  // Soft delete: set leftAt timestamp
+  await db
+    .update(groupMembers)
+    .set({ leftAt: new Date() })
+    .where(eq(groupMembers.id, membership.id));
+
+  return { success: true };
+}
+
+/**
+ * Soft delete a group
+ * AC-1.16 to AC-1.19
+ */
+export async function deleteGroup(groupId: string): Promise<boolean> {
+  const [deleted] = await db
+    .update(groups)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(groups.id, groupId), isNull(groups.deletedAt)))
+    .returning();
+
+  return !!deleted;
 }

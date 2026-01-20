@@ -287,4 +287,4 @@ Predefined expense categories for AC-2.8:
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
 | Project Owner | Claude (PO) | 2026-01-20 | [x] Approved |
-| Lead Developer | | | [ ] Approved |
+| Lead Developer | Claude (Lead Dev) | 2026-01-20 | [x] Approved |

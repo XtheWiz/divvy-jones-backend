@@ -23,6 +23,8 @@ export const app = new Elysia()
           { name: "Auth", description: "Authentication endpoints" },
           { name: "Users", description: "User management endpoints" },
           { name: "Groups", description: "Group management endpoints" },
+          { name: "Currencies", description: "Currency and exchange rate endpoints" },
+          { name: "Export", description: "Data export endpoints" },
         ],
       },
     })

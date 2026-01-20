@@ -38,11 +38,11 @@ export const fxRates = pgTable(
     rate: numeric("rate", { precision: 20, scale: 10 }).notNull(),
     asOf: timestamp("as_of", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_fx_rates_pair_date").on(table.baseCode, table.quoteCode, table.asOf),
-    index("idx_fx_rates_as_of").on(table.asOf),
-    check("fx_rates_different_currencies", sql`${table.baseCode} <> ${table.quoteCode}`),
-  ]
+  (table) => ({
+    idx_fx_rates_pair_date: index("idx_fx_rates_pair_date").on(table.baseCode, table.quoteCode, table.asOf),
+    idx_fx_rates_as_of: index("idx_fx_rates_as_of").on(table.asOf),
+    fx_rates_different_currencies: check("fx_rates_different_currencies", sql`${table.baseCode} <> ${table.quoteCode}`),
+  })
 );
 
 // ============================================================================

@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, boolean, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { authProviderType } from "./enums";
 import { currencies } from "./currencies";
 
@@ -22,14 +23,14 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }), // soft delete
   },
-  (table) => [
-    uniqueIndex("idx_users_email")
+  (table) => ({
+    idx_users_email: uniqueIndex("idx_users_email")
       .on(table.email)
-      .where("email IS NOT NULL AND deleted_at IS NULL"),
-    index("idx_users_deleted_at")
+      .where(sql`email IS NOT NULL AND deleted_at IS NULL`),
+    idx_users_deleted_at: index("idx_users_deleted_at")
       .on(table.deletedAt)
-      .where("deleted_at IS NOT NULL"),
-  ]
+      .where(sql`deleted_at IS NOT NULL`),
+  })
 );
 
 // ============================================================================
@@ -50,10 +51,10 @@ export const oauthAccounts = pgTable(
     emailAtProvider: text("email_at_provider"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    uniqueIndex("oauth_accounts_unique_provider").on(table.provider, table.providerUid),
-    index("idx_oauth_accounts_user_id").on(table.userId),
-  ]
+  (table) => ({
+    oauth_accounts_unique_provider: uniqueIndex("oauth_accounts_unique_provider").on(table.provider, table.providerUid),
+    idx_oauth_accounts_user_id: index("idx_oauth_accounts_user_id").on(table.userId),
+  })
 );
 
 // ============================================================================
@@ -70,6 +71,10 @@ export const userSettings = pgTable("user_settings", {
   defaultCurrencyCode: text("default_currency_code").references(() => currencies.code),
   pushEnabled: boolean("push_enabled").notNull().default(true),
   emailNotifications: boolean("email_notifications").notNull().default(true),
+  // Granular notification preferences (Sprint 006 - AC-1.3)
+  notifyOnExpenseAdded: boolean("notify_on_expense_added").notNull().default(true),
+  notifyOnSettlement: boolean("notify_on_settlement").notNull().default(true),
+  notifyOnGroupActivity: boolean("notify_on_group_activity").notNull().default(true),
   timezone: text("timezone").default("UTC"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -90,10 +95,10 @@ export const refreshTokens = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }), // null if active
   },
-  (table) => [
-    index("idx_refresh_tokens_user_id").on(table.userId),
-    index("idx_refresh_tokens_token_hash").on(table.tokenHash),
-  ]
+  (table) => ({
+    idx_refresh_tokens_user_id: index("idx_refresh_tokens_user_id").on(table.userId),
+    idx_refresh_tokens_token_hash: index("idx_refresh_tokens_token_hash").on(table.tokenHash),
+  })
 );
 
 // ============================================================================

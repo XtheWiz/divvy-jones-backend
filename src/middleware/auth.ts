@@ -95,7 +95,8 @@ export const authMiddleware = new Elysia({ name: "auth" })
       auth: { userId, email } as AuthContext,
       authError: null,
     };
-  });
+  })
+  .as("global");
 
 /**
  * Guard that ensures authentication is valid
@@ -108,7 +109,8 @@ export const requireAuth = new Elysia({ name: "requireAuth" })
       set.status = 401;
       return authError;
     }
-  });
+  })
+  .as("global");
 
 // ============================================================================
 // JWT Token Generation
@@ -119,7 +121,8 @@ export const requireAuth = new Elysia({ name: "requireAuth" })
  * This is a helper to be used in auth routes
  */
 export async function generateAccessToken(
-  jwt: { sign: (payload: Record<string, unknown>) => Promise<string> },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  jwt: { sign: (payload: any) => Promise<string> },
   payload: AccessTokenPayload
 ): Promise<string> {
   return jwt.sign({

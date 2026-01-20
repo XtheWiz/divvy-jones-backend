@@ -53,6 +53,10 @@ export const activityAction = pgTable("activity_action", {
   value: text("value").primaryKey(),
 });
 
+export const expenseCategory = pgTable("expense_category", {
+  value: text("value").primaryKey(),
+});
+
 // ============================================================================
 // Type Constants (for application use)
 // ============================================================================
@@ -107,3 +111,9 @@ export const ACTIVITY_ACTIONS = [
   "settle", "confirm", "cancel",
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
+
+export const EXPENSE_CATEGORIES = [
+  "food", "transport", "accommodation", "entertainment",
+  "shopping", "utilities", "health", "travel", "groceries", "other",
+] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];

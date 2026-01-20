@@ -7,6 +7,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { currencies } from "./currencies";
 import { groupIcon, colorName, membershipRole, membershipStatus } from "./enums";
@@ -42,17 +43,17 @@ export const groups = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_groups_owner")
+  (table) => ({
+    idx_groups_owner: index("idx_groups_owner")
       .on(table.ownerUserId)
-      .where("deleted_at IS NULL"),
-    index("idx_groups_join_code")
+      .where(sql`deleted_at IS NULL`),
+    idx_groups_join_code: index("idx_groups_join_code")
       .on(table.joinCode)
-      .where("join_code IS NOT NULL AND deleted_at IS NULL"),
-    index("idx_groups_qr_token")
+      .where(sql`join_code IS NOT NULL AND deleted_at IS NULL`),
+    idx_groups_qr_token: index("idx_groups_qr_token")
       .on(table.qrToken)
-      .where("qr_token IS NOT NULL AND deleted_at IS NULL"),
-  ]
+      .where(sql`qr_token IS NOT NULL AND deleted_at IS NULL`),
+  })
 );
 
 // ============================================================================
@@ -70,9 +71,9 @@ export const groupCurrencies = pgTable(
       .notNull()
       .references(() => currencies.code),
   },
-  (table) => [
-    uniqueIndex("group_currencies_unique").on(table.groupId, table.currencyCode),
-  ]
+  (table) => ({
+    group_currencies_unique: uniqueIndex("group_currencies_unique").on(table.groupId, table.currencyCode),
+  })
 );
 
 // ============================================================================
@@ -102,15 +103,15 @@ export const groupMembers = pgTable(
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
     leftAt: timestamp("left_at", { withTimezone: true }),
   },
-  (table) => [
-    uniqueIndex("group_members_unique").on(table.groupId, table.userId),
-    index("idx_group_members_group_id")
+  (table) => ({
+    group_members_unique: uniqueIndex("group_members_unique").on(table.groupId, table.userId),
+    idx_group_members_group_id: index("idx_group_members_group_id")
       .on(table.groupId)
-      .where("left_at IS NULL"),
-    index("idx_group_members_user_id")
+      .where(sql`left_at IS NULL`),
+    idx_group_members_user_id: index("idx_group_members_user_id")
       .on(table.userId)
-      .where("left_at IS NULL"),
-  ]
+      .where(sql`left_at IS NULL`),
+  })
 );
 
 // ============================================================================
@@ -134,13 +135,13 @@ export const leaveRequests = pgTable(
     status: text("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_leave_requests_group_id").on(table.groupId),
-    index("idx_leave_requests_member_id").on(table.memberId),
-    index("idx_leave_requests_status")
+  (table) => ({
+    idx_leave_requests_group_id: index("idx_leave_requests_group_id").on(table.groupId),
+    idx_leave_requests_member_id: index("idx_leave_requests_member_id").on(table.memberId),
+    idx_leave_requests_status: index("idx_leave_requests_status")
       .on(table.status)
-      .where("status = 'pending'"),
-  ]
+      .where(sql`status = 'pending'`),
+  })
 );
 
 // ============================================================================
@@ -164,10 +165,10 @@ export const groupInvites = pgTable(
     usedByUserId: uuid("used_by_user_id").references(() => users.id),
     usedAt: timestamp("used_at", { withTimezone: true }),
   },
-  (table) => [
-    index("idx_group_invites_group_id").on(table.groupId),
-    index("idx_group_invites_issued_by").on(table.issuedByMemberId),
-  ]
+  (table) => ({
+    idx_group_invites_group_id: index("idx_group_invites_group_id").on(table.groupId),
+    idx_group_invites_issued_by: index("idx_group_invites_issued_by").on(table.issuedByMemberId),
+  })
 );
 
 // ============================================================================

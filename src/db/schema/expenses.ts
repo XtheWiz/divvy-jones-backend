@@ -12,7 +12,7 @@ import {
 import { sql } from "drizzle-orm";
 import { groups, groupMembers } from "./groups";
 import { currencies } from "./currencies";
-import { groupIcon, colorName, discountMode, shareMode } from "./enums";
+import { groupIcon, colorName, discountMode, shareMode, expenseCategory } from "./enums";
 
 // ============================================================================
 // EXPENSES
@@ -33,6 +33,9 @@ export const expenses = pgTable(
     icon: text("icon")
       .references(() => groupIcon.value)
       .default("other"),
+    category: text("category")
+      .references(() => expenseCategory.value)
+      .default("other"),
     color: text("color").references(() => colorName.value),
     latitude: numeric("latitude", { precision: 10, scale: 7 }),
     longitude: numeric("longitude", { precision: 10, scale: 7 }),
@@ -49,15 +52,15 @@ export const expenses = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }), // soft delete
   },
-  (table) => [
-    index("idx_expenses_group_id")
+  (table) => ({
+    idx_expenses_group_id: index("idx_expenses_group_id")
       .on(table.groupId)
-      .where("deleted_at IS NULL"),
-    index("idx_expenses_created_by").on(table.createdByMemberId),
-    index("idx_expenses_date")
+      .where(sql`deleted_at IS NULL`),
+    idx_expenses_created_by: index("idx_expenses_created_by").on(table.createdByMemberId),
+    idx_expenses_date: index("idx_expenses_date")
       .on(table.expenseDate)
-      .where("deleted_at IS NULL"),
-  ]
+      .where(sql`deleted_at IS NULL`),
+  })
 );
 
 // ============================================================================
@@ -83,9 +86,9 @@ export const expenseItems = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_expense_items_expense_id").on(table.expenseId),
-  ]
+  (table) => ({
+    idx_expense_items_expense_id: index("idx_expense_items_expense_id").on(table.expenseId),
+  })
 );
 
 // ============================================================================
@@ -109,11 +112,11 @@ export const expenseItemMembers = pgTable(
     weight: numeric("weight", { precision: 10, scale: 4 }).default("1"),
     exactAmount: numeric("exact_amount", { precision: 20, scale: 4 }),
   },
-  (table) => [
-    uniqueIndex("expense_item_members_unique").on(table.itemId, table.memberId),
-    index("idx_expense_item_members_item_id").on(table.itemId),
-    index("idx_expense_item_members_member_id").on(table.memberId),
-  ]
+  (table) => ({
+    expense_item_members_unique: uniqueIndex("expense_item_members_unique").on(table.itemId, table.memberId),
+    idx_expense_item_members_item_id: index("idx_expense_item_members_item_id").on(table.itemId),
+    idx_expense_item_members_member_id: index("idx_expense_item_members_member_id").on(table.memberId),
+  })
 );
 
 // ============================================================================
@@ -136,12 +139,12 @@ export const expensePayers = pgTable(
       .references(() => currencies.code),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    uniqueIndex("expense_payers_unique").on(table.expenseId, table.memberId),
-    index("idx_expense_payers_expense_id").on(table.expenseId),
-    index("idx_expense_payers_member_id").on(table.memberId),
-    check("expense_payers_positive_amount", sql`${table.amount} > 0`),
-  ]
+  (table) => ({
+    expense_payers_unique: uniqueIndex("expense_payers_unique").on(table.expenseId, table.memberId),
+    idx_expense_payers_expense_id: index("idx_expense_payers_expense_id").on(table.expenseId),
+    idx_expense_payers_member_id: index("idx_expense_payers_member_id").on(table.memberId),
+    expense_payers_positive_amount: check("expense_payers_positive_amount", sql`${table.amount} > 0`),
+  })
 );
 
 // ============================================================================
@@ -160,9 +163,9 @@ export const ocrReceipts = pgTable(
     parsedJson: text("parsed_json"), // stored as JSONB in postgres
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index("idx_ocr_receipts_expense_id").on(table.expenseId),
-  ]
+  (table) => ({
+    idx_ocr_receipts_expense_id: index("idx_ocr_receipts_expense_id").on(table.expenseId),
+  })
 );
 
 // ============================================================================
