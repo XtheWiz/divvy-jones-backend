@@ -1,0 +1,349 @@
+erDiagram
+
+  %% Lookup enums (แทน enum)
+  auth_provider_type   { text value PK }
+  membership_role      { text value PK }
+  membership_status    { text value PK }
+  group_icon           { text value PK }
+  color_name           { text value PK }
+  discount_mode        { text value PK }
+  share_mode           { text value PK }
+  settlement_status    { text value PK }
+  evidence_target      { text value PK }
+  leave_request_status { text value PK }
+  notification_type    { text value PK }
+  activity_action      { text value PK }
+
+  %% Users & Auth
+  users {
+    uuid id PK
+    text email
+    text display_name
+    text password_hash "nullable for OAuth-only users"
+    text primary_auth_provider FK
+    boolean is_email_verified
+    boolean ads_opt_out
+    timestamptz created_at
+    timestamptz updated_at
+    timestamptz deleted_at "soft delete"
+  }
+
+  oauth_accounts {
+    uuid id PK
+    uuid user_id FK
+    text provider FK
+    text provider_uid
+    text email_at_provider
+    timestamptz created_at
+  }
+
+  users ||--o{ oauth_accounts : has
+  users }o--|| auth_provider_type : primary_auth_provider
+  oauth_accounts }o--|| auth_provider_type : provider
+
+  %% User Settings & Preferences
+  user_settings {
+    uuid id PK
+    uuid user_id FK
+    text language_code
+    text default_currency_code FK
+    boolean push_enabled
+    boolean email_notifications
+    text timezone
+    timestamptz updated_at
+  }
+
+  users ||--o| user_settings : has
+  user_settings }o--|| currencies : default_currency
+
+  %% Plans, Features, Subs
+  plans {
+    uuid id PK
+    text code
+    text name
+    int price_cents_month
+    boolean ads_enabled
+    timestamptz created_at
+  }
+
+  plan_features {
+    uuid id PK
+    uuid plan_id FK
+    text key
+    int int_value
+    boolean bool_value
+    text text_value
+  }
+
+  subscriptions {
+    uuid id PK
+    uuid user_id FK
+    uuid plan_id FK
+    timestamptz started_at
+    timestamptz expires_at
+    timestamptz cancelled_at
+  }
+
+  plans ||--o{ plan_features : has
+  plans ||--o{ subscriptions : has
+  users ||--o{ subscriptions : has
+
+  %% Currency & FX
+  currencies {
+    text code PK
+    text name
+    text symbol
+    smallint decimals
+  }
+
+  fx_rates {
+    bigserial id PK
+    text base_code FK
+    text quote_code FK
+    numeric rate
+    timestamptz as_of
+  }
+
+  currencies ||--o{ fx_rates : base
+  currencies ||--o{ fx_rates : quote
+
+  %% Groups & Members
+  groups {
+    uuid id PK
+    uuid owner_user_id FK
+    text name
+    text label
+    text icon FK
+    text color FK
+    text default_currency_code FK
+    text region_code
+    text join_code
+    text qr_token
+    timestamptz expires_at
+    timestamptz deleted_at
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  group_currencies {
+    uuid id PK
+    uuid group_id FK
+    text currency_code FK
+  }
+
+  group_members {
+    uuid id PK
+    uuid group_id FK
+    uuid user_id FK
+    text role FK
+    text status FK
+    boolean is_guest
+    uuid origin_member_id FK
+    timestamptz joined_at
+    timestamptz left_at
+  }
+
+  users ||--o{ groups : owns
+  groups ||--o{ group_currencies : has
+  groups ||--o{ group_members : has
+  users ||--o{ group_members : has
+  groups }o--|| currencies : default_currency
+  groups }o--|| group_icon : icon
+  groups }o--|| color_name : color
+  group_currencies }o--|| currencies : currency
+  group_members }o--|| membership_role : role
+  group_members }o--|| membership_status : status
+  group_members }o--o| group_members : origin
+
+  %% Expenses & Items
+  expenses {
+    uuid id PK
+    uuid group_id FK
+    uuid created_by_member_id FK
+    text name
+    text label
+    text icon FK
+    text color FK
+    numeric latitude
+    numeric longitude
+    text currency_code FK
+    numeric subtotal "renamed from input_value for clarity"
+    numeric service_charge_pct
+    numeric vat_pct
+    numeric extra_discount_value
+    text extra_discount_mode FK
+    timestamptz expense_date "when expense occurred"
+    timestamptz created_at
+    timestamptz updated_at
+    timestamptz deleted_at "soft delete"
+  }
+
+  expense_items {
+    uuid id PK
+    uuid expense_id FK
+    text name
+    numeric quantity
+    numeric unit_value
+    text currency_code FK
+    boolean apply_service_charge
+    boolean apply_vat
+    boolean apply_extra_discount
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  expense_item_members {
+    uuid id PK
+    uuid item_id FK
+    uuid member_id FK
+    text share_mode FK
+    numeric weight
+    numeric exact_amount
+  }
+
+  %% NEW: Expense Payers - tracks who paid for expenses
+  expense_payers {
+    uuid id PK
+    uuid expense_id FK
+    uuid member_id FK
+    numeric amount
+    text currency_code FK
+    timestamptz created_at
+  }
+
+  groups ||--o{ expenses : has
+  group_members ||--o{ expenses : created_by
+  expenses ||--o{ expense_items : has
+  expenses ||--o{ expense_payers : paid_by
+  expense_items ||--o{ expense_item_members : has
+  group_members ||--o{ expense_item_members : has
+  group_members ||--o{ expense_payers : payer
+  expenses }o--|| currencies : currency
+  expenses }o--|| discount_mode : discount_mode
+  expenses }o--|| group_icon : icon
+  expenses }o--|| color_name : color
+  expense_items }o--|| currencies : currency
+  expense_item_members }o--|| share_mode : share_mode
+  expense_payers }o--|| currencies : currency
+
+  %% OCR
+  ocr_receipts {
+    uuid id PK
+    uuid expense_id FK
+    text source
+    text raw_text
+    jsonb parsed_json
+    timestamptz created_at
+  }
+  expenses ||--o{ ocr_receipts : has
+
+  %% Settlements
+  settlements {
+    uuid id PK
+    uuid group_id FK
+    uuid payer_member_id FK
+    uuid payee_member_id FK
+    numeric amount
+    text currency_code FK
+    boolean by_items "true if linked to specific items, false if aggregate"
+    text status FK
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  groups ||--o{ settlements : has
+  group_members ||--o{ settlements : payer
+  group_members ||--o{ settlements : payee
+  settlements }o--|| currencies : currency
+  settlements }o--|| settlement_status : status
+
+  %% Evidences (files)
+  evidences {
+    uuid id PK
+    text target FK
+    uuid expense_id FK
+    uuid settlement_id FK
+    text file_key
+    text mime_type
+    int size_bytes
+    uuid created_by_user_id FK
+    timestamptz created_at
+  }
+
+  users ||--o{ evidences : creator
+  expenses ||--o{ evidences : has
+  settlements ||--o{ evidences : has
+  evidences }o--|| evidence_target : target
+
+  %% Leave Requests
+  leave_requests {
+    uuid id PK
+    uuid group_id FK
+    uuid member_id FK
+    text reason
+    boolean has_unsettled
+    uuid approved_by_member_id FK
+    timestamptz approved_at
+    text status FK
+    timestamptz created_at
+  }
+
+  groups ||--o{ leave_requests : has
+  group_members ||--o{ leave_requests : requester
+  group_members ||--o{ leave_requests : approver
+  leave_requests }o--|| leave_request_status : status
+
+  %% Group Invites (audit)
+  group_invites {
+    uuid id PK
+    uuid group_id FK
+    uuid issued_by_member_id FK
+    text method
+    text code_snapshot
+    text qr_token_snapshot
+    timestamptz created_at
+    uuid used_by_user_id FK
+    timestamptz used_at
+  }
+
+  groups ||--o{ group_invites : has
+  group_members ||--o{ group_invites : issued_by
+  users ||--o{ group_invites : used_by
+
+  %% NEW: Notifications
+  notifications {
+    uuid id PK
+    uuid user_id FK
+    text type FK
+    text title
+    text body
+    jsonb data "additional payload"
+    uuid reference_id "generic FK to related entity"
+    text reference_type "entity type: expense, settlement, group, etc"
+    boolean is_read
+    timestamptz read_at
+    timestamptz created_at
+  }
+
+  users ||--o{ notifications : receives
+  notifications }o--|| notification_type : type
+
+  %% NEW: Activity Log (audit trail)
+  activity_log {
+    uuid id PK
+    uuid group_id FK
+    uuid actor_member_id FK
+    text action FK
+    text entity_type "expense, settlement, member, etc"
+    uuid entity_id
+    jsonb old_values "previous state"
+    jsonb new_values "new state"
+    text ip_address
+    text user_agent
+    timestamptz created_at
+  }
+
+  groups ||--o{ activity_log : has
+  group_members ||--o{ activity_log : actor
+  activity_log }o--|| activity_action : action
+
