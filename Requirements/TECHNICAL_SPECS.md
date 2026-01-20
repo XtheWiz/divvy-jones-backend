@@ -418,10 +418,129 @@ OCR_API_KEY=...
 
 ---
 
+## Team & Workflow
+
+### Development Team (Multi-Agent)
+
+| Role | Agent Mode | Responsibilities | Worktree |
+|------|------------|------------------|----------|
+| **Project Owner** | Claude (PO mode) | Sprint features, acceptance criteria, backlog management | Main |
+| **Lead Developer** | Claude (Lead Dev mode) | Planning, task breakdown, code review, architecture decisions | `.worktrees/lead-dev` |
+| **Backend Developer** | Claude (Backend mode) | Implementation, unit tests, pull requests | `.worktrees/backend-dev` |
+| **QA Engineer** | Claude (QA mode) | Test cases, validation, sign-off | `.worktrees/qa` |
+
+### Sprint Process
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          SPRINT WORKFLOW                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. PO: Create SPRINT.md        ───►  Define features & acceptance     │
+│                                        criteria                         │
+│                                                                         │
+│  2. Lead Dev: Planning          ───►  PLANNING.md, TASKS.md            │
+│                                        Task breakdown & estimation      │
+│                                                                         │
+│  3. Lead Dev: Assign Tasks      ───►  Allocate to Backend Dev          │
+│                                                                         │
+│  4. Backend Dev: Implement      ───►  Feature branch in worktree       │
+│                                        sprint-XXX/TASK-XXX-desc         │
+│                                                                         │
+│  5. Backend Dev: Submit         ───►  PR for review                    │
+│                                                                         │
+│  6. Lead Dev: Review            ───►  REVIEW_LOG.md                    │
+│                                        Approve or request changes       │
+│                                                                         │
+│  7. Lead Dev: Pass to QA        ───►  Hand off for testing             │
+│                                                                         │
+│  8. QA: Test & Validate         ───►  QA_REPORT.md                     │
+│                                        Pass/fail with evidence          │
+│                                                                         │
+│  9. All: Retrospective          ───►  RETROSPECTIVE.md                 │
+│                                        Good/Bad/Action Items            │
+│                                                                         │
+│  10. Check Retro                ───►  Review before next sprint        │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Git Workflow
+
+#### Branch Strategy
+
+```
+main                    # Production-ready code
+│
+└── develop             # Integration branch
+    │
+    ├── lead-dev/workspace     # Lead Dev working branch
+    ├── backend-dev/workspace  # Backend Dev working branch
+    └── qa/workspace           # QA working branch
+        │
+        └── sprint-XXX/TASK-XXX-description  # Feature branches
+```
+
+#### Worktree Setup
+
+| Worktree | Branch | Purpose |
+|----------|--------|---------|
+| Main repo | `develop` | Integration, documentation |
+| `.worktrees/lead-dev` | `lead-dev/workspace` | Planning, reviews |
+| `.worktrees/backend-dev` | `backend-dev/workspace` | Implementation |
+| `.worktrees/qa` | `qa/workspace` | Testing |
+
+#### Feature Branch Naming
+
+```
+sprint-001/TASK-001-user-authentication
+sprint-001/TASK-002-group-creation
+sprint-002/TASK-010-expense-tracking
+```
+
+### Communication Protocol
+
+All team communication happens through markdown files in the `Sprints/` directory:
+
+| Document | Purpose | Owner |
+|----------|---------|-------|
+| `SPRINT.md` | Sprint scope and acceptance criteria | PO |
+| `PLANNING.md` | Technical decisions and task breakdown | Lead Dev |
+| `TASKS.md` | Task board and status tracking | Lead Dev |
+| `REVIEW_LOG.md` | Code review feedback | Lead Dev |
+| `QA_REPORT.md` | Test results and bug reports | QA |
+| `RETROSPECTIVE.md` | Sprint reflection and improvements | All |
+
+### Sprint Directory Structure
+
+```
+Sprints/
+├── BACKLOG.md              # Product backlog (all features)
+├── CURRENT_SPRINT.md       # Quick reference to active sprint
+├── templates/              # Document templates
+│   ├── SPRINT_TEMPLATE.md
+│   ├── TASK_TEMPLATE.md
+│   ├── PLANNING_TEMPLATE.md
+│   ├── REVIEW_TEMPLATE.md
+│   ├── QA_TEMPLATE.md
+│   └── RETRO_TEMPLATE.md
+└── sprint-XXX/             # Per-sprint folders
+    ├── SPRINT.md
+    ├── PLANNING.md
+    ├── TASKS.md
+    ├── REVIEW_LOG.md
+    ├── QA_REPORT.md
+    ├── RETROSPECTIVE.md
+    └── tasks/              # Detailed task specs
+```
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.2.0 | 2026-01-20 | Added Team & Workflow section |
 | 0.1.0 | 2026-01-20 | Initial technical specification |
 
 ---
