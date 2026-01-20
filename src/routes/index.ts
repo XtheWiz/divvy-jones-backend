@@ -12,6 +12,7 @@ import {
 import { activityRoutes } from "./activity";
 import { currencyRoutes } from "./currencies";
 import { exportRoutes } from "./export";
+import { adminRoutes } from "./admin";
 
 export const routes = new Elysia({ prefix: "/v1" })
   .get("/", () => ({
@@ -31,4 +32,5 @@ export const routes = new Elysia({ prefix: "/v1" })
   .use(settlementAttachmentRoutes)
   .use(activityRoutes)
   .use(currencyRoutes)
-  .use(exportRoutes);
+  .use(exportRoutes)
+  .use(adminRoutes);

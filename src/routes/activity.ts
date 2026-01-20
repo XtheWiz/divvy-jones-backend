@@ -61,6 +61,8 @@ export const activityRoutes = new Elysia({ prefix: "/groups/:groupId/activity" }
       const entityType = query?.type as EntityType | undefined;
       const from = query?.from ? new Date(query.from) : undefined;
       const to = query?.to ? new Date(query.to) : undefined;
+      // AC-2.6: Include archived activity logs when requested
+      const includeArchived = query?.includeArchived === "true";
 
       // Validate date range
       if (from && isNaN(from.getTime())) {
@@ -73,6 +75,7 @@ export const activityRoutes = new Elysia({ prefix: "/groups/:groupId/activity" }
       }
 
       // Get activity
+      // AC-2.6: Pass includeArchived to include archived records
       const result = await listActivity({
         groupId,
         limit,
@@ -80,6 +83,7 @@ export const activityRoutes = new Elysia({ prefix: "/groups/:groupId/activity" }
         entityType,
         from,
         to,
+        includeArchived,
       });
 
       // Format response
@@ -120,6 +124,8 @@ export const activityRoutes = new Elysia({ prefix: "/groups/:groupId/activity" }
           ),
           from: t.Optional(t.String()),
           to: t.Optional(t.String()),
+          // AC-2.6: Include archived activity logs
+          includeArchived: t.Optional(t.String()),
         })
       ),
     }

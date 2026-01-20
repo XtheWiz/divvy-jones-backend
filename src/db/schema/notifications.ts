@@ -78,6 +78,37 @@ export const activityLog = pgTable(
 );
 
 // ============================================================================
+// ACTIVITY LOG ARCHIVE
+// Sprint 006 - TASK-010
+// AC-2.1: Archive table mirrors activity_logs structure
+// AC-2.2: Archived records include original timestamps and metadata
+// ============================================================================
+
+export const activityLogArchive = pgTable(
+  "activity_log_archive",
+  {
+    id: uuid("id").primaryKey(), // Keep original ID (no defaultRandom)
+    groupId: uuid("group_id").notNull(), // No FK constraint for independence
+    actorMemberId: uuid("actor_member_id"),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    oldValues: jsonb("old_values"),
+    newValues: jsonb("new_values"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(), // Original timestamp
+    archivedAt: timestamp("archived_at", { withTimezone: true }).notNull().defaultNow(), // When archived
+  },
+  (table) => ({
+    // Index for querying archived data
+    idx_activity_log_archive_group_id: index("idx_activity_log_archive_group_id").on(table.groupId),
+    idx_activity_log_archive_created_at: index("idx_activity_log_archive_created_at").on(table.createdAt),
+    idx_activity_log_archive_archived_at: index("idx_activity_log_archive_archived_at").on(table.archivedAt),
+  })
+);
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -86,3 +117,6 @@ export type NewNotification = typeof notifications.$inferInsert;
 
 export type ActivityLog = typeof activityLog.$inferSelect;
 export type NewActivityLog = typeof activityLog.$inferInsert;
+
+export type ActivityLogArchive = typeof activityLogArchive.$inferSelect;
+export type NewActivityLogArchive = typeof activityLogArchive.$inferInsert;

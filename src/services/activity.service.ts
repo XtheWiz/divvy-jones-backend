@@ -5,10 +5,11 @@
  * Handles activity logging and retrieval for group audit trails.
  */
 
-import { eq, and, desc, count, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, count, gte, lte, sql, or } from "drizzle-orm";
 import {
   db,
   activityLog,
+  activityLogArchive,
   groupMembers,
   users,
   type ActivityLog,
@@ -64,6 +65,7 @@ export interface ListActivityParams {
   entityType?: EntityType;
   from?: Date;
   to?: Date;
+  includeArchived?: boolean; // AC-2.6: Include archived activity logs
 }
 
 export interface ListActivityResult {
@@ -123,16 +125,17 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
  * AC-2.12: Sorted by timestamp descending
  * AC-2.14: Filter by type
  * AC-2.15: Filter by date range
+ * AC-2.6: Include archived activity logs when includeArchived=true
  */
 export async function listActivity(
   params: ListActivityParams
 ): Promise<ListActivityResult> {
-  const { groupId, limit = 20, offset = 0, entityType, from, to } = params;
+  const { groupId, limit = 20, offset = 0, entityType, from, to, includeArchived = false } = params;
 
   // Enforce max limit
   const effectiveLimit = Math.min(limit, 100);
 
-  // Build conditions
+  // Build conditions for active logs
   const conditions = [eq(activityLog.groupId, groupId)];
 
   if (entityType) {
@@ -147,16 +150,42 @@ export async function listActivity(
     conditions.push(lte(activityLog.createdAt, to));
   }
 
-  // Get total count
-  const [countResult] = await db
+  // Get total count (including archived if requested)
+  let total = 0;
+
+  const [activeCountResult] = await db
     .select({ count: count() })
     .from(activityLog)
     .where(and(...conditions));
 
-  const total = countResult?.count || 0;
+  total = activeCountResult?.count || 0;
+
+  if (includeArchived) {
+    // Build archive conditions
+    const archiveConditions = [eq(activityLogArchive.groupId, groupId)];
+
+    if (entityType) {
+      archiveConditions.push(eq(activityLogArchive.entityType, entityType));
+    }
+
+    if (from) {
+      archiveConditions.push(gte(activityLogArchive.createdAt, from));
+    }
+
+    if (to) {
+      archiveConditions.push(lte(activityLogArchive.createdAt, to));
+    }
+
+    const [archivedCountResult] = await db
+      .select({ count: count() })
+      .from(activityLogArchive)
+      .where(and(...archiveConditions));
+
+    total += archivedCountResult?.count || 0;
+  }
 
   // Get activities with actor info
-  const results = await db
+  const activeResults = await db
     .select({
       id: activityLog.id,
       groupId: activityLog.groupId,
@@ -169,6 +198,7 @@ export async function listActivity(
       createdAt: activityLog.createdAt,
       actorUserId: users.id,
       actorDisplayName: users.displayName,
+      isArchived: sql<boolean>`false`.as("is_archived"),
     })
     .from(activityLog)
     .leftJoin(groupMembers, eq(groupMembers.id, activityLog.actorMemberId))
@@ -178,7 +208,53 @@ export async function listActivity(
     .limit(effectiveLimit)
     .offset(offset);
 
-  const activities: ActivityWithActor[] = results.map((r) => ({
+  let allResults = [...activeResults];
+
+  // Include archived records if requested
+  // AC-2.6: GET /groups/:groupId/activity supports `includeArchived` query param
+  if (includeArchived) {
+    const archiveConditions = [eq(activityLogArchive.groupId, groupId)];
+
+    if (entityType) {
+      archiveConditions.push(eq(activityLogArchive.entityType, entityType));
+    }
+
+    if (from) {
+      archiveConditions.push(gte(activityLogArchive.createdAt, from));
+    }
+
+    if (to) {
+      archiveConditions.push(lte(activityLogArchive.createdAt, to));
+    }
+
+    const archivedResults = await db
+      .select({
+        id: activityLogArchive.id,
+        groupId: activityLogArchive.groupId,
+        actorMemberId: activityLogArchive.actorMemberId,
+        action: activityLogArchive.action,
+        entityType: activityLogArchive.entityType,
+        entityId: activityLogArchive.entityId,
+        oldValues: activityLogArchive.oldValues,
+        newValues: activityLogArchive.newValues,
+        createdAt: activityLogArchive.createdAt,
+        actorUserId: sql<string | null>`null`.as("actor_user_id"),
+        actorDisplayName: sql<string | null>`null`.as("actor_display_name"),
+        isArchived: sql<boolean>`true`.as("is_archived"),
+      })
+      .from(activityLogArchive)
+      .where(and(...archiveConditions))
+      .orderBy(desc(activityLogArchive.createdAt))
+      .limit(effectiveLimit)
+      .offset(offset);
+
+    // Merge and sort by createdAt descending
+    allResults = [...activeResults, ...archivedResults]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, effectiveLimit);
+  }
+
+  const activities: ActivityWithActor[] = allResults.map((r) => ({
     id: r.id,
     groupId: r.groupId,
     actorMemberId: r.actorMemberId,

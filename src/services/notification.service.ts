@@ -2,11 +2,19 @@ import { eq, and, desc, count } from "drizzle-orm";
 import {
   db,
   notifications,
+  users,
   type Notification,
   type NewNotification,
   NOTIFICATION_TYPES,
   type NotificationType,
 } from "../db";
+import { getEmailService } from "./email";
+import {
+  expenseAddedTemplate,
+  settlementRequestedTemplate,
+  settlementConfirmedTemplate,
+} from "./email/templates";
+import { getUserPreferences, shouldNotify } from "./preferences.service";
 
 // ============================================================================
 // Constants
@@ -245,11 +253,14 @@ export async function getUnreadCount(userId: string): Promise<number> {
 
 // ============================================================================
 // Settlement Notification Helpers
+// AC-1.13: In-app notifications respect user preference settings
+// AC-1.14: Users can disable specific notification types without disabling all
 // ============================================================================
 
 /**
  * Create notification for settlement request
  * AC-2.4: Payee notified when settlement is requested
+ * AC-1.13: Respects user preferences
  */
 export async function notifySettlementRequested(
   payeeUserId: string,
@@ -257,7 +268,13 @@ export async function notifySettlementRequested(
   amount: number,
   currency: string,
   settlementId: string
-): Promise<Notification> {
+): Promise<Notification | null> {
+  // AC-1.13, AC-1.14: Check if user wants settlement notifications
+  const wantsNotification = await shouldNotify(payeeUserId, "settlement");
+  if (!wantsNotification) {
+    return null;
+  }
+
   return createNotification({
     userId: payeeUserId,
     type: "settlement_requested",
@@ -272,6 +289,7 @@ export async function notifySettlementRequested(
 /**
  * Create notification for settlement confirmation
  * AC-2.5: Payer notified when settlement is confirmed
+ * AC-1.13: Respects user preferences
  */
 export async function notifySettlementConfirmed(
   payerUserId: string,
@@ -279,7 +297,13 @@ export async function notifySettlementConfirmed(
   amount: number,
   currency: string,
   settlementId: string
-): Promise<Notification> {
+): Promise<Notification | null> {
+  // AC-1.13, AC-1.14: Check if user wants settlement notifications
+  const wantsNotification = await shouldNotify(payerUserId, "settlement");
+  if (!wantsNotification) {
+    return null;
+  }
+
   return createNotification({
     userId: payerUserId,
     type: "settlement_confirmed",
@@ -294,6 +318,7 @@ export async function notifySettlementConfirmed(
 /**
  * Create notification for settlement rejection
  * AC-2.6: Payer notified when settlement is rejected
+ * AC-1.13: Respects user preferences
  */
 export async function notifySettlementRejected(
   payerUserId: string,
@@ -302,7 +327,13 @@ export async function notifySettlementRejected(
   currency: string,
   settlementId: string,
   reason?: string
-): Promise<Notification> {
+): Promise<Notification | null> {
+  // AC-1.13, AC-1.14: Check if user wants settlement notifications
+  const wantsNotification = await shouldNotify(payerUserId, "settlement");
+  if (!wantsNotification) {
+    return null;
+  }
+
   return createNotification({
     userId: payerUserId,
     type: "settlement_rejected",
@@ -314,4 +345,174 @@ export async function notifySettlementRejected(
     referenceId: settlementId,
     referenceType: "settlement",
   });
+}
+
+// ============================================================================
+// Email Notification Helpers
+// Sprint 006 - TASK-008
+// AC-1.11: Emails respect user preferences
+// AC-1.12: Email sending is non-blocking (queued/async)
+// ============================================================================
+
+/**
+ * Get user email address by user ID
+ */
+async function getUserEmail(userId: string): Promise<string | null> {
+  const [user] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user?.email || null;
+}
+
+/**
+ * Get user display name by user ID
+ */
+async function getUserDisplayName(userId: string): Promise<string | null> {
+  const [user] = await db
+    .select({ displayName: users.displayName })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user?.displayName || null;
+}
+
+/**
+ * Send email notification asynchronously (non-blocking)
+ * AC-1.12: Email sending is non-blocking
+ */
+function sendEmailAsync(
+  to: { email: string; name?: string },
+  template: { subject: string; html: string; text: string }
+): void {
+  // Use setImmediate to make this non-blocking
+  setImmediate(async () => {
+    try {
+      const emailService = getEmailService();
+      const result = await emailService.send({
+        to,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+
+      if (!result.success) {
+        console.error(`Failed to send email to ${to.email}:`, result.error);
+      }
+    } catch (error) {
+      console.error(`Error sending email to ${to.email}:`, error);
+    }
+  });
+}
+
+/**
+ * Send expense added email notification
+ * AC-1.11: Respects user preferences
+ */
+export async function sendExpenseAddedEmail(
+  recipientUserId: string,
+  data: {
+    actorName: string;
+    groupName: string;
+    expenseName: string;
+    amount: number;
+    currency: string;
+    yourShare: number;
+    category?: string;
+  }
+): Promise<void> {
+  // AC-1.11: Check user preferences
+  const preferences = await getUserPreferences(recipientUserId);
+  if (!preferences?.emailNotifications || !preferences?.notifyOnExpenseAdded) {
+    return;
+  }
+
+  const email = await getUserEmail(recipientUserId);
+  const displayName = await getUserDisplayName(recipientUserId);
+
+  if (!email) {
+    return;
+  }
+
+  const template = expenseAddedTemplate({
+    recipientName: displayName || "there",
+    ...data,
+  });
+
+  // AC-1.12: Non-blocking email send
+  sendEmailAsync({ email, name: displayName || undefined }, template);
+}
+
+/**
+ * Send settlement requested email notification
+ * AC-1.11: Respects user preferences
+ */
+export async function sendSettlementRequestedEmail(
+  payeeUserId: string,
+  data: {
+    payerName: string;
+    groupName: string;
+    amount: number;
+    currency: string;
+    note?: string;
+  }
+): Promise<void> {
+  // AC-1.11: Check user preferences
+  const preferences = await getUserPreferences(payeeUserId);
+  if (!preferences?.emailNotifications || !preferences?.notifyOnSettlement) {
+    return;
+  }
+
+  const email = await getUserEmail(payeeUserId);
+  const displayName = await getUserDisplayName(payeeUserId);
+
+  if (!email) {
+    return;
+  }
+
+  const template = settlementRequestedTemplate({
+    recipientName: displayName || "there",
+    ...data,
+  });
+
+  // AC-1.12: Non-blocking email send
+  sendEmailAsync({ email, name: displayName || undefined }, template);
+}
+
+/**
+ * Send settlement confirmed email notification
+ * AC-1.11: Respects user preferences
+ */
+export async function sendSettlementConfirmedEmail(
+  payerUserId: string,
+  data: {
+    payeeName: string;
+    groupName: string;
+    amount: number;
+    currency: string;
+  }
+): Promise<void> {
+  // AC-1.11: Check user preferences
+  const preferences = await getUserPreferences(payerUserId);
+  if (!preferences?.emailNotifications || !preferences?.notifyOnSettlement) {
+    return;
+  }
+
+  const email = await getUserEmail(payerUserId);
+  const displayName = await getUserDisplayName(payerUserId);
+
+  if (!email) {
+    return;
+  }
+
+  const template = settlementConfirmedTemplate({
+    recipientName: displayName || "there",
+    ...data,
+  });
+
+  // AC-1.12: Non-blocking email send
+  sendEmailAsync({ email, name: displayName || undefined }, template);
 }
