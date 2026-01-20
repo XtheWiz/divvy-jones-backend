@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { authRoutes } from "./auth";
 import { userRoutes } from "./users";
-// import { groupRoutes } from "./groups";
+import { groupRoutes } from "./groups";
 
 export const routes = new Elysia({ prefix: "/v1" })
   .get("/", () => ({
@@ -12,7 +12,5 @@ export const routes = new Elysia({ prefix: "/v1" })
     },
   }))
   .use(authRoutes)
-  .use(userRoutes);
-
-// Routes will be added as they are implemented:
-// .use(groupRoutes)
+  .use(userRoutes)
+  .use(groupRoutes);
