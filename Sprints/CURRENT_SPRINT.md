@@ -1,96 +1,80 @@
-# Current Sprint
+# Current Sprint Status
 
-## Active Sprint
-**Sprint:** 001
-**Status:** Ready for Development
-**Location:** `./sprint-001/`
+## Active Sprint: None (Between Sprints)
+
+**Last Completed:** Sprint 001
+**Next Sprint:** Sprint 002 (Not Started)
 
 ---
 
-## Sprint Goal
-> Establish authentication foundation and basic group management
+## Sprint 001 Summary (✅ CLOSED)
+
+| Metric | Result |
+|--------|--------|
+| **Status** | ✅ Completed |
+| **Goal** | Establish authentication foundation and basic group management |
+| **Features Delivered** | 2/2 |
+| **Acceptance Criteria** | 36/36 (100%) |
+| **Tasks Completed** | 14/14 |
+| **Code Review** | ✅ Approved |
+| **QA Pass Rate** | 100% (44/44 tests) |
+| **Merged to** | develop |
+
+### Features Delivered
+1. **User Authentication System** (BL-001)
+   - Registration, login, token refresh, user profile
+   - All 16 acceptance criteria met
+
+2. **Basic Group Management** (BL-002 partial)
+   - Create group, join group, list groups, view members
+   - All 19 acceptance criteria met
+
+### Sprint Progress
+
+**Progress:** ██████████ 100%
+
+| Phase | Status |
+|-------|--------|
+| PO Sprint Definition | ✅ Complete |
+| Lead Dev Planning | ✅ Complete |
+| Backend Development | ✅ Complete (14 tasks) |
+| Code Review | ✅ Approved |
+| QA Testing | ✅ Passed |
+| Merge to Develop | ✅ Complete |
+| Retrospective | ✅ Complete |
+
+---
+
+## Sprint 001 Documentation
+
+| Document | Status |
+|----------|--------|
+| [Sprint Definition](./sprint-001/SPRINT.md) | ✅ Complete |
+| [Planning Notes](./sprint-001/PLANNING.md) | ✅ Complete |
+| [Task Board](./sprint-001/TASKS.md) | ✅ Complete |
+| [Review Log](./sprint-001/REVIEW_LOG.md) | ✅ Complete |
+| [QA Report](./sprint-001/QA_REPORT.md) | ✅ Complete |
+| [Retrospective](./sprint-001/RETROSPECTIVE.md) | ✅ Complete |
+
+---
+
+## Action Items for Sprint 002
+
+### High Priority (From Retrospective)
+| Action | Owner |
+|--------|-------|
+| Fix dynamic imports in users.ts | Backend Dev |
+| Add JWT secret production check | Backend Dev |
+| Set up test database for E2E tests | Lead Dev |
+| Add rate limiting to auth endpoints | Backend Dev |
+
+### Features to Consider (From Backlog)
+- Complete remaining group management (BL-002)
+- Begin expense creation and management (BL-003)
 
 ---
 
 ## Quick Links
-- [Sprint Document](./sprint-001/SPRINT.md) ✅ Defined by PO
-- [Planning Notes](./sprint-001/PLANNING.md) ✅ Completed by Lead Dev
-- [Task Board](./sprint-001/TASKS.md) ✅ 14 Tasks Created
-- [Review Log](./sprint-001/REVIEW_LOG.md)
-- [QA Report](./sprint-001/QA_REPORT.md)
-- [Retrospective](./sprint-001/RETROSPECTIVE.md)
-
----
-
-## Features for Sprint 001
-
-| # | Feature | Backlog ID | Tasks | Complexity |
-|---|---------|------------|-------|------------|
-| 1 | User Authentication System | BL-001 | 8 | 3S + 5M |
-| 2 | Basic Group Management | BL-002 (partial) | 6 | 2S + 4M |
-| | **Total** | | **14** | **5S + 9M** |
-
----
-
-## Sprint Progress
-
-| Metric | Count |
-|--------|-------|
-| Total Tasks | 14 |
-| Todo | 14 |
-| In Progress | 0 |
-| In Review | 0 |
-| QA | 0 |
-| Done | 0 |
-
-**Progress:** ░░░░░░░░░░ 0%
-
----
-
-## Team Status
-
-| Role | Agent | Current Task | Status |
-|------|-------|--------------|--------|
-| Project Owner | Claude (PO) | Sprint 001 Definition | ✅ Complete |
-| Lead Developer | Claude (Lead Dev) | Planning Session | ✅ Complete |
-| Backend Developer | Claude (Backend) | TASK-001 | ⏳ Ready to Start |
-| QA Engineer | Claude (QA) | - | ⏳ Awaiting Features |
-
----
-
-## Next Actions
-
-1. **Backend Developer:** Start TASK-001 (Project Setup)
-2. **Backend Developer:** Follow task dependency chain
-3. **QA Engineer:** Prepare test cases while development proceeds
-4. **Lead Developer:** Monitor progress, ready for code reviews
-
----
-
-## Key Technical Decisions
-- Layer-based project structure (routes/services/middleware)
-- bcryptjs with cost factor 12 for password hashing
-- JWT in Authorization header (Bearer token)
-- Refresh tokens stored hashed in DB (single-use)
-- Join codes: 8 chars uppercase, no ambiguous chars
-
----
-
-## Timeline
-
-| Date | Milestone | Status |
-|------|-----------|--------|
-| 2026-01-20 | Sprint defined by PO | ✅ |
-| 2026-01-20 | Planning session complete | ✅ |
-| 2026-01-20 | Development begins | ⏳ |
-| TBD | Auth feature complete | - |
-| TBD | Groups feature complete | - |
-| 2026-02-03 | Sprint end date | - |
-
----
-
-## Notes
-- 14 tasks total: 5 Small, 9 Medium complexity
-- Auth tasks (001-008) should complete before groups (009-014)
-- Need to add refresh_tokens table to schema
-- First task: Project setup with package.json and Elysia scaffold
+- [Product Backlog](./BACKLOG.md)
+- [Sprint 001 Artifacts](./sprint-001/)
+- [Workflow Blueprint](/WORKFLOW_BLUEPRINT.md)
