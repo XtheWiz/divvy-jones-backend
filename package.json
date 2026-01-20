@@ -1,0 +1,35 @@
+{
+  "name": "divvy-jones",
+  "version": "0.1.0",
+  "description": "Expense splitting application for groups",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir=dist --target=bun",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "bun run src/db/seed.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "elysia": "^1.0.0",
+    "@elysiajs/jwt": "^1.0.0",
+    "@elysiajs/cors": "^1.0.0",
+    "@elysiajs/swagger": "^1.0.0",
+    "drizzle-orm": "^0.33.0",
+    "pg": "^8.12.0",
+    "bcryptjs": "^2.4.3",
+    "nanoid": "^5.0.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "@types/pg": "^8.11.0",
+    "@types/bcryptjs": "^2.4.6",
+    "drizzle-kit": "^0.24.0",
+    "typescript": "^5.5.0"
+  }
+}
