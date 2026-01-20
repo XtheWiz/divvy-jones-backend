@@ -1,80 +1,107 @@
-# Current Sprint Status
+# Current Sprint
 
-## Active Sprint: None (Between Sprints)
-
-**Last Completed:** Sprint 001
-**Next Sprint:** Sprint 002 (Not Started)
-
----
-
-## Sprint 001 Summary (✅ CLOSED)
-
-| Metric | Result |
-|--------|--------|
-| **Status** | ✅ Completed |
-| **Goal** | Establish authentication foundation and basic group management |
-| **Features Delivered** | 2/2 |
-| **Acceptance Criteria** | 36/36 (100%) |
-| **Tasks Completed** | 14/14 |
-| **Code Review** | ✅ Approved |
-| **QA Pass Rate** | 100% (44/44 tests) |
-| **Merged to** | develop |
-
-### Features Delivered
-1. **User Authentication System** (BL-001)
-   - Registration, login, token refresh, user profile
-   - All 16 acceptance criteria met
-
-2. **Basic Group Management** (BL-002 partial)
-   - Create group, join group, list groups, view members
-   - All 19 acceptance criteria met
-
-### Sprint Progress
-
-**Progress:** ██████████ 100%
-
-| Phase | Status |
-|-------|--------|
-| PO Sprint Definition | ✅ Complete |
-| Lead Dev Planning | ✅ Complete |
-| Backend Development | ✅ Complete (14 tasks) |
-| Code Review | ✅ Approved |
-| QA Testing | ✅ Passed |
-| Merge to Develop | ✅ Complete |
-| Retrospective | ✅ Complete |
+## Active Sprint
+**Sprint:** 002
+**Status:** Ready for Planning
+**Location:** `./sprint-002/`
 
 ---
 
-## Sprint 001 Documentation
-
-| Document | Status |
-|----------|--------|
-| [Sprint Definition](./sprint-001/SPRINT.md) | ✅ Complete |
-| [Planning Notes](./sprint-001/PLANNING.md) | ✅ Complete |
-| [Task Board](./sprint-001/TASKS.md) | ✅ Complete |
-| [Review Log](./sprint-001/REVIEW_LOG.md) | ✅ Complete |
-| [QA Report](./sprint-001/QA_REPORT.md) | ✅ Complete |
-| [Retrospective](./sprint-001/RETROSPECTIVE.md) | ✅ Complete |
-
----
-
-## Action Items for Sprint 002
-
-### High Priority (From Retrospective)
-| Action | Owner |
-|--------|-------|
-| Fix dynamic imports in users.ts | Backend Dev |
-| Add JWT secret production check | Backend Dev |
-| Set up test database for E2E tests | Lead Dev |
-| Add rate limiting to auth endpoints | Backend Dev |
-
-### Features to Consider (From Backlog)
-- Complete remaining group management (BL-002)
-- Begin expense creation and management (BL-003)
+## Sprint Goal
+> Address technical debt from Sprint 001, complete group management, and implement core expense tracking
 
 ---
 
 ## Quick Links
-- [Product Backlog](./BACKLOG.md)
-- [Sprint 001 Artifacts](./sprint-001/)
-- [Workflow Blueprint](/WORKFLOW_BLUEPRINT.md)
+- [Sprint Document](./sprint-002/SPRINT.md) ✅ Defined by PO
+- [Planning Notes](./sprint-002/PLANNING.md) ⏳ Pending Lead Dev
+- [Task Board](./sprint-002/TASKS.md)
+- [Review Log](./sprint-002/REVIEW_LOG.md)
+- [QA Report](./sprint-002/QA_REPORT.md)
+- [Retrospective](./sprint-002/RETROSPECTIVE.md)
+
+---
+
+## Features for Sprint 002
+
+| # | Feature | Backlog ID | ACs | Priority |
+|---|---------|------------|-----|----------|
+| 0 | Technical Debt & Infrastructure | Retro Items | 8 | P0 |
+| 1 | Complete Group Management | BL-002 | 19 | P0 |
+| 2 | Core Expense Tracking | BL-003 | 36 | P0 |
+| 3 | Balance Calculation | BL-004 | 9 | P0 |
+| | **Total** | | **53** | |
+
+---
+
+## Sprint 001 Retro Action Items (Must Address)
+
+| Action Item | Status |
+|-------------|--------|
+| Fix dynamic imports in users.ts | ⏳ Pending |
+| Add JWT secret production check | ⏳ Pending |
+| Set up test database | ⏳ Pending |
+| Add rate limiting to auth endpoints | ⏳ Pending |
+| Replace raw SQL with inArray | ⏳ Pending |
+
+---
+
+## Sprint Progress
+
+| Metric | Count |
+|--------|-------|
+| Total ACs | 53 |
+| Todo | 53 |
+| In Progress | 0 |
+| In Review | 0 |
+| QA | 0 |
+| Done | 0 |
+
+**Progress:** ░░░░░░░░░░ 0%
+
+---
+
+## Team Status
+
+| Role | Agent | Current Task | Status |
+|------|-------|--------------|--------|
+| Project Owner | Claude (PO) | Sprint 002 Definition | ✅ Complete |
+| Lead Developer | Claude (Lead Dev) | Planning Session | ⏳ Next |
+| Backend Developer | Claude (Backend) | - | ⏳ Awaiting Tasks |
+| QA Engineer | Claude (QA) | - | ⏳ Awaiting Features |
+
+---
+
+## Next Actions
+
+1. **Lead Developer:** Planning session → Create PLANNING.md, TASKS.md
+2. **Lead Developer:** Break down features into tasks
+3. **Backend Developer:** Start with technical debt tasks
+4. **QA Engineer:** Prepare test cases for expense functionality
+
+---
+
+## New API Endpoints (Planned)
+
+| Method | Endpoint | Feature |
+|--------|----------|---------|
+| PUT | `/groups/:id` | Group Management |
+| POST | `/groups/:id/leave` | Group Management |
+| POST | `/groups/:id/regenerate-code` | Group Management |
+| DELETE | `/groups/:id` | Group Management |
+| POST | `/groups/:id/expenses` | Expense Tracking |
+| GET | `/groups/:id/expenses` | Expense Tracking |
+| GET | `/groups/:id/expenses/:expenseId` | Expense Tracking |
+| PUT | `/groups/:id/expenses/:expenseId` | Expense Tracking |
+| DELETE | `/groups/:id/expenses/:expenseId` | Expense Tracking |
+| GET | `/groups/:id/balances` | Balance Calculation |
+
+---
+
+## Previous Sprint Summary
+
+**Sprint 001:** ✅ CLOSED
+- 2 features delivered
+- 36/36 ACs met
+- 100% test pass rate
+- [View Sprint 001 Artifacts](./sprint-001/)
