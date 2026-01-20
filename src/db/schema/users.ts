@@ -75,11 +75,36 @@ export const userSettings = pgTable("user_settings", {
 });
 
 // ============================================================================
+// REFRESH TOKENS
+// ============================================================================
+
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(), // hashed token for secure lookup
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }), // null if active
+  },
+  (table) => [
+    index("idx_refresh_tokens_user_id").on(table.userId),
+    index("idx_refresh_tokens_token_hash").on(table.tokenHash),
+  ]
+);
+
+// ============================================================================
 // Types
 // ============================================================================
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type NewRefreshToken = typeof refreshTokens.$inferInsert;
 
 export type OauthAccount = typeof oauthAccounts.$inferSelect;
 export type NewOauthAccount = typeof oauthAccounts.$inferInsert;
