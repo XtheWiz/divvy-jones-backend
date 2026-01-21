@@ -57,6 +57,11 @@ export const expenseCategory = pgTable("expense_category", {
   value: text("value").primaryKey(),
 });
 
+// Sprint 007 - Recurring Expenses
+export const recurringFrequency = pgTable("recurring_frequency", {
+  value: text("value").primaryKey(),
+});
+
 // ============================================================================
 // Type Constants (for application use)
 // ============================================================================
@@ -117,3 +122,9 @@ export const EXPENSE_CATEGORIES = [
   "shopping", "utilities", "health", "travel", "groceries", "other",
 ] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+// Sprint 007 - AC-3.2: Supports frequency types
+export const RECURRING_FREQUENCIES = [
+  "daily", "weekly", "biweekly", "monthly", "yearly",
+] as const;
+export type RecurringFrequency = (typeof RECURRING_FREQUENCIES)[number];

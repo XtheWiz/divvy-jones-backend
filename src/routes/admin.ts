@@ -1,9 +1,11 @@
 /**
  * Admin Routes
  * Sprint 006 - TASK-011
+ * Sprint 007 - TASK-015
  *
  * Administrative endpoints for system management.
  * AC-2.4: Archival can be triggered manually via admin endpoint
+ * AC-3.11: Recurring job can be triggered manually via admin endpoint
  */
 
 import { Elysia, t } from "elysia";
@@ -13,6 +15,7 @@ import {
   getArchivalStats,
   getArchivalCandidateCount,
 } from "../services/archival.service";
+import { generateDueExpenses } from "../services/recurring.service";
 
 // ============================================================================
 // Admin API Key Authentication
@@ -145,6 +148,38 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
         summary: "Preview archival candidates",
         description:
           "Returns the count of activity logs that would be archived with the given retention period.",
+        tags: ["Admin"],
+      },
+    }
+  )
+
+  // ========================================================================
+  // POST /admin/generate-recurring - Generate Due Recurring Expenses
+  // Sprint 007 - AC-3.11: Job can be triggered manually via admin endpoint
+  // ========================================================================
+  .post(
+    "/generate-recurring",
+    async ({ isAdmin, set }) => {
+      if (!isAdmin) {
+        set.status = 403;
+        return error(ErrorCodes.FORBIDDEN, "Admin access required");
+      }
+
+      const result = await generateDueExpenses();
+
+      return success({
+        message: "Recurring expense generation completed",
+        processed: result.processed,
+        generated: result.generated,
+        skipped: result.skipped,
+        errors: result.errors,
+      });
+    },
+    {
+      detail: {
+        summary: "Generate due recurring expenses",
+        description:
+          "Manually trigger generation of all due recurring expenses. This processes all active recurring rules that have passed their next occurrence date.",
         tags: ["Admin"],
       },
     }

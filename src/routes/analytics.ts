@@ -1,52 +1,61 @@
 /**
- * Export Routes
- * Sprint 005 - TASK-013
- * Sprint 007 - TASK-005 (PDF Export)
+ * Analytics Routes
+ * Sprint 007 - TASK-010
  *
- * Routes for exporting group expenses in CSV, JSON, and PDF formats.
+ * Routes for spending analytics and reporting.
+ *
+ * AC-2.1: GET /groups/:groupId/analytics/summary returns spending summary
+ * AC-2.4: Summary supports date range filtering (from, to)
+ * AC-2.5: Summary supports period grouping (daily, weekly, monthly)
+ * AC-2.6: GET /groups/:groupId/analytics/categories returns category breakdown
+ * AC-2.9: GET /groups/:groupId/analytics/trends returns spending trends
  */
 
 import { Elysia, t } from "elysia";
-import { success, error, ErrorCodes } from "../lib/responses";
+import { error, ErrorCodes } from "../lib/responses";
 import { requireAuth } from "../middleware/auth";
 import { findGroupById, isMemberOfGroup } from "../services/group.service";
 import {
-  generateCsvExport,
-  generateJsonExport,
-  generatePdfExport,
-} from "../services/export";
+  getSpendingSummary,
+  getCategoryAnalytics,
+  getSpendingTrends,
+  type PeriodType,
+} from "../services/analytics.service";
 
 // ============================================================================
 // Request Schemas
 // ============================================================================
 
-const exportParamsSchema = t.Object({
+const analyticsParamsSchema = t.Object({
   groupId: t.String(),
 });
 
-const exportQuerySchema = t.Object({
+const analyticsQuerySchema = t.Object({
   startDate: t.Optional(t.String()),
   endDate: t.Optional(t.String()),
+  period: t.Optional(t.Union([
+    t.Literal("daily"),
+    t.Literal("weekly"),
+    t.Literal("monthly"),
+  ])),
 });
 
 // ============================================================================
-// Export Routes
+// Analytics Routes
 // ============================================================================
 
-export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
+export const analyticsRoutes = new Elysia({ prefix: "/groups/:groupId/analytics" })
   .use(requireAuth)
 
   // ========================================================================
-  // GET /groups/:groupId/export/csv - Export Expenses as CSV
-  // AC-2.1: GET /groups/:groupId/export/csv exports expenses as CSV
-  // AC-2.2: CSV includes: date, description, amount, currency, payer, splits
-  // AC-2.3: CSV export can be filtered by date range
-  // AC-2.4: Filename includes group name and date range
-  // AC-2.7: Only group members can export group data
-  // AC-2.8: Export includes only active (non-deleted) expenses
+  // GET /groups/:groupId/analytics/summary - Spending Summary
+  // AC-2.1: Returns spending summary
+  // AC-2.2: Includes total, average, count
+  // AC-2.3: Includes per-member breakdown
+  // AC-2.4: Supports date range filtering
   // ========================================================================
   .get(
-    "/csv",
+    "/summary",
     async ({ params, query, auth, authError, set }) => {
       if (!auth) {
         set.status = 401;
@@ -62,7 +71,75 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
         return error(ErrorCodes.NOT_FOUND, "Group not found");
       }
 
-      // AC-2.7: Only group members can export
+      // Only group members can view analytics
+      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      if (!isMember) {
+        set.status = 403;
+        return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
+      }
+
+      // Parse date filters (AC-2.4)
+      const dateFrom = query.startDate ? new Date(query.startDate) : undefined;
+      const dateTo = query.endDate ? new Date(query.endDate) : undefined;
+
+      // Validate dates
+      if (dateFrom && isNaN(dateFrom.getTime())) {
+        set.status = 400;
+        return error(ErrorCodes.VALIDATION_ERROR, "Invalid startDate format");
+      }
+      if (dateTo && isNaN(dateTo.getTime())) {
+        set.status = 400;
+        return error(ErrorCodes.VALIDATION_ERROR, "Invalid endDate format");
+      }
+
+      // Get spending summary
+      const summary = await getSpendingSummary({
+        groupId,
+        dateFrom,
+        dateTo,
+      });
+
+      return {
+        success: true,
+        data: summary,
+      };
+    },
+    {
+      params: analyticsParamsSchema,
+      query: analyticsQuerySchema,
+      detail: {
+        summary: "Get spending summary",
+        description:
+          "Get spending summary including totals and per-member breakdown. Supports date range filtering.",
+        tags: ["Analytics"],
+      },
+    }
+  )
+
+  // ========================================================================
+  // GET /groups/:groupId/analytics/categories - Category Breakdown
+  // AC-2.6: Returns category breakdown
+  // AC-2.7: Shows amount and percentage per category
+  // AC-2.8: Sorted by total amount descending
+  // ========================================================================
+  .get(
+    "/categories",
+    async ({ params, query, auth, authError, set }) => {
+      if (!auth) {
+        set.status = 401;
+        return authError;
+      }
+
+      const { groupId } = params;
+
+      // Check group exists
+      const group = await findGroupById(groupId);
+      if (!group) {
+        set.status = 404;
+        return error(ErrorCodes.NOT_FOUND, "Group not found");
+      }
+
+      // Only group members can view analytics
       const isMember = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
@@ -83,41 +160,38 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
         return error(ErrorCodes.VALIDATION_ERROR, "Invalid endDate format");
       }
 
-      // Generate CSV export
-      const result = await generateCsvExport({
+      // Get category analytics
+      const categories = await getCategoryAnalytics({
         groupId,
         dateFrom,
         dateTo,
       });
 
-      // Set headers for file download
-      set.headers = {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${result.filename}"`,
+      return {
+        success: true,
+        data: categories,
       };
-
-      return result.csv;
     },
     {
-      params: exportParamsSchema,
-      query: exportQuerySchema,
+      params: analyticsParamsSchema,
+      query: analyticsQuerySchema,
       detail: {
-        summary: "Export expenses as CSV",
-        description: "Export all group expenses as a CSV file. Supports date range filtering.",
-        tags: ["Export"],
+        summary: "Get category breakdown",
+        description:
+          "Get spending breakdown by category with amounts and percentages. Categories are sorted by total amount descending.",
+        tags: ["Analytics"],
       },
     }
   )
 
   // ========================================================================
-  // GET /groups/:groupId/export/json - Export Expenses as JSON
-  // AC-2.5: GET /groups/:groupId/export/json exports full expense data
-  // AC-2.6: JSON includes all expense details including attachments metadata
-  // AC-2.7: Only group members can export group data
-  // AC-2.8: Export includes only active (non-deleted) expenses
+  // GET /groups/:groupId/analytics/trends - Spending Trends
+  // AC-2.9: Returns spending trends
+  // AC-2.10: Shows spending over time for requested period
+  // AC-2.5: Supports period grouping (daily, weekly, monthly)
   // ========================================================================
   .get(
-    "/json",
+    "/trends",
     async ({ params, query, auth, authError, set }) => {
       if (!auth) {
         set.status = 401;
@@ -133,7 +207,7 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
         return error(ErrorCodes.NOT_FOUND, "Group not found");
       }
 
-      // AC-2.7: Only group members can export
+      // Only group members can view analytics
       const isMember = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
@@ -154,102 +228,30 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
         return error(ErrorCodes.VALIDATION_ERROR, "Invalid endDate format");
       }
 
-      // Generate JSON export
-      const result = await generateJsonExport({
+      // Validate period (AC-2.5)
+      const period = (query.period as PeriodType) || "monthly";
+
+      // Get spending trends
+      const trends = await getSpendingTrends({
         groupId,
         dateFrom,
         dateTo,
+        period,
       });
 
-      // Set headers for file download
-      set.headers = {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${result.filename}"`,
+      return {
+        success: true,
+        data: trends,
       };
-
-      return result.json;
     },
     {
-      params: exportParamsSchema,
-      query: exportQuerySchema,
+      params: analyticsParamsSchema,
+      query: analyticsQuerySchema,
       detail: {
-        summary: "Export expenses as JSON",
+        summary: "Get spending trends",
         description:
-          "Export all group expenses as a JSON file with full details including attachments metadata.",
-        tags: ["Export"],
-      },
-    }
-  )
-
-  // ========================================================================
-  // GET /groups/:groupId/export/pdf - Export Expenses as PDF Report
-  // Sprint 007 - TASK-005
-  // AC-1.5: GET /groups/:groupId/export/pdf exports expenses as PDF
-  // AC-1.6: PDF export can be filtered by date range
-  // AC-1.7: Only group members can export group data
-  // AC-1.8: PDF filename includes group name and date range
-  // ========================================================================
-  .get(
-    "/pdf",
-    async ({ params, query, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // AC-1.7: Only group members can export
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
-      }
-
-      // Parse date filters (AC-1.6)
-      const dateFrom = query.startDate ? new Date(query.startDate) : undefined;
-      const dateTo = query.endDate ? new Date(query.endDate) : undefined;
-
-      // Validate dates
-      if (dateFrom && isNaN(dateFrom.getTime())) {
-        set.status = 400;
-        return error(ErrorCodes.VALIDATION_ERROR, "Invalid startDate format");
-      }
-      if (dateTo && isNaN(dateTo.getTime())) {
-        set.status = 400;
-        return error(ErrorCodes.VALIDATION_ERROR, "Invalid endDate format");
-      }
-
-      // Generate PDF export (AC-1.5)
-      const result = await generatePdfExport({
-        groupId,
-        dateFrom,
-        dateTo,
-      });
-
-      // Set headers for file download (AC-1.8)
-      set.headers = {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${result.filename}"`,
-      };
-
-      return result.pdf;
-    },
-    {
-      params: exportParamsSchema,
-      query: exportQuerySchema,
-      detail: {
-        summary: "Export expenses as PDF",
-        description:
-          "Export group expense report as a PDF file with summary, expense table, and balance summary. Supports date range filtering.",
-        tags: ["Export"],
+          "Get spending trends over time. Supports daily, weekly, or monthly grouping via the 'period' query parameter.",
+        tags: ["Analytics"],
       },
     }
   );

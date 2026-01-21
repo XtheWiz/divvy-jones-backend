@@ -1,8 +1,8 @@
 /**
  * Export Services
- * Sprint 005
+ * Sprint 005 + Sprint 007
  *
- * Re-exports for CSV and JSON export services.
+ * Re-exports for CSV, JSON, and PDF export services.
  */
 
 export {
@@ -23,3 +23,10 @@ export {
   type ExportedExpense,
   type ExportData,
 } from "./json.service";
+
+export {
+  generatePdfExport,
+  generatePdfFilename,
+  type PdfExportOptions,
+  type PdfExportResult,
+} from "./pdf.service";
