@@ -13,6 +13,8 @@ import {
   leaveRequestStatus,
   notificationType,
   activityAction,
+  expenseCategory,
+  recurringFrequency,
   // Constants
   AUTH_PROVIDERS,
   MEMBERSHIP_ROLES,
@@ -26,6 +28,8 @@ import {
   LEAVE_REQUEST_STATUSES,
   NOTIFICATION_TYPES,
   ACTIVITY_ACTIONS,
+  EXPENSE_CATEGORIES,
+  RECURRING_FREQUENCIES,
   // Tables
   currencies,
   plans,
@@ -47,6 +51,8 @@ async function seedEnums() {
   await db.insert(leaveRequestStatus).values(LEAVE_REQUEST_STATUSES.map((v) => ({ value: v }))).onConflictDoNothing();
   await db.insert(notificationType).values(NOTIFICATION_TYPES.map((v) => ({ value: v }))).onConflictDoNothing();
   await db.insert(activityAction).values(ACTIVITY_ACTIONS.map((v) => ({ value: v }))).onConflictDoNothing();
+  await db.insert(expenseCategory).values(EXPENSE_CATEGORIES.map((v) => ({ value: v }))).onConflictDoNothing();
+  await db.insert(recurringFrequency).values(RECURRING_FREQUENCIES.map((v) => ({ value: v }))).onConflictDoNothing();
 
   console.log("Enum tables seeded.");
 }

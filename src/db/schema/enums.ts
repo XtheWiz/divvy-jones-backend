@@ -66,7 +66,7 @@ export const recurringFrequency = pgTable("recurring_frequency", {
 // Type Constants (for application use)
 // ============================================================================
 
-export const AUTH_PROVIDERS = ["email", "google", "apple", "facebook", "line"] as const;
+export const AUTH_PROVIDERS = ["email", "password", "google", "apple", "facebook", "line"] as const;
 export type AuthProvider = (typeof AUTH_PROVIDERS)[number];
 
 export const MEMBERSHIP_ROLES = ["owner", "admin", "member", "viewer"] as const;
