@@ -50,10 +50,8 @@ afterAll(async () => {
   await afterAllTests();
 });
 
-beforeEach(async () => {
-  // Clean up between tests for isolation
-  await cleanupTestData();
-});
+// Note: Removed beforeEach cleanup to avoid race conditions when test files run in parallel.
+// Each test creates fresh data. Cleanup happens in beforeAll/afterAll per file.
 
 // ============================================================================
 // Response Types

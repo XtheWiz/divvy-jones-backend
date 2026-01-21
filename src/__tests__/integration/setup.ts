@@ -92,6 +92,11 @@ const TABLES_IN_DELETE_ORDER = [
   // Settlements (depends on groups, group_members)
   "settlements",
 
+  // Recurring expenses (Sprint 007)
+  "recurring_expense_splits",
+  "recurring_expense_payers",
+  "recurring_expenses",
+
   // Expense-related (most dependent)
   "expense_item_members",
   "expense_payers",
