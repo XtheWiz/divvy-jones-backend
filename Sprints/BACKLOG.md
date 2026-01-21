@@ -15,12 +15,12 @@ This document contains all features and user stories prioritized for future spri
 
 ### P0 - Critical (MVP)
 
-#### ~~BL-001: User Authentication System~~ ✅ COMPLETE (Sprint 001)
+#### ~~BL-001: User Authentication System~~ ✅ COMPLETE (Sprint 001 + 009)
 **Description:** Implement user registration, login, and session management
 **Acceptance Criteria:**
 - [x] Users can register with email and password
 - [x] Users can log in and receive JWT token
-- [ ] Password reset functionality *(deferred)*
+- [x] Password reset functionality *(Sprint 009)*
 - [x] Session management with token refresh
 
 #### ~~BL-002: Group Management~~ ✅ COMPLETE (Sprint 001 + 002)
@@ -99,6 +99,15 @@ This document contains all features and user stories prioritized for future spri
 
 ## Recently Completed
 
+### Sprint 009 (2026-01-21) ✅ COMPLETE
+| Item | Features Delivered |
+|------|-------------------|
+| BL-001 | Password Reset (forgot password, reset with token, session invalidation) |
+| Feature | Integration Test Infrastructure (transaction isolation, app factory) |
+| Feature | Authorization Middleware (requireGroupMember, requireGroupAdmin) |
+| Feature | Rate Limiting (sliding window algorithm, configurable limits) |
+| Tests | 50 new unit tests (859 total) |
+
 ### Sprint 008 (2026-01-21) ✅ COMPLETE
 | Item | Features Delivered |
 |------|-------------------|
@@ -172,27 +181,29 @@ This document contains all features and user stories prioritized for future spri
 | 006 | 30 | 30 | 100% |
 | 007 | 34 | 34 | 100% |
 | 008 | 30 | 30 | 100% |
+| 009 | 36 | 36 | 100% |
 
-**Average Velocity:** 98.5%
-**Total ACs Delivered:** 334
+**Average Velocity:** 99.2%
+**Total ACs Delivered:** 370
 
 ---
 
 ## Upcoming Sprint Candidates
 
-### Sprint 009 (Next)
-**Tentative Focus:** Infrastructure & Mobile Readiness
+### Sprint 010 (Current)
+**Focus:** User Security & Compliance
 
-1. **Integration Test Infrastructure** - Fix DATABASE_URL_TEST issues (carried from Sprint 008)
-2. **Auth Middleware Extraction** - Reduce route handler duplication (carried from Sprint 008)
-3. **Push Notifications** - Mobile/web push (requires service worker)
-4. **Password Reset** - BL-001 completion
-5. **Rate Limiting** - Social endpoints rate limiting (carried from Sprint 008)
+1. **Email Verification** - Verify new user email addresses
+2. **OAuth/Social Login** - Google login integration
+3. **Account Management** - GDPR compliance (deletion, data export)
+4. **Database Migrations** - Proper migration workflow
 
-### Sprint 010 (Future)
+### Sprint 011 (Future)
 1. **Real-time Updates** - WebSocket for live notifications
-2. **Group Roles** - Admin, member, viewer permissions
-3. **Expense Templates** - Quick entry from templates
+2. **Push Notifications** - Mobile/web push (requires service worker)
+3. **Group Roles** - Admin, member, viewer granular permissions
+4. **Expense Templates** - Quick entry from saved templates
+5. **Apple Sign In** - Additional OAuth provider
 
 ---
 
@@ -200,4 +211,4 @@ This document contains all features and user stories prioritized for future spri
 - Backlog is prioritized by Product Owner
 - Items are refined during sprint planning
 - Acceptance criteria must be clear before sprint start
-- Password reset (BL-001) deferred indefinitely - low priority for MVP
+- All P0-P3 backlog items complete - now focusing on security and compliance features

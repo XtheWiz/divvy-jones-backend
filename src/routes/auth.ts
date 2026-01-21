@@ -20,8 +20,25 @@ import {
   generateResetToken,
   resetPassword as resetPasswordService,
 } from "../services/password-reset.service";
+import {
+  generateVerificationToken,
+  markEmailVerified,
+} from "../services/email-verification.service";
+import {
+  isGoogleOAuthConfigured,
+  generateOAuthState,
+  verifyOAuthState,
+  getGoogleAuthUrl,
+  exchangeGoogleCode,
+  getGoogleUserInfo,
+  findOrCreateGoogleUser,
+} from "../services/oauth.service";
 import { sendEmail } from "../services/email";
-import { passwordResetTemplate } from "../services/email/templates";
+import {
+  passwordResetTemplate,
+  emailVerificationTemplate,
+  resendVerificationTemplate,
+} from "../services/email/templates";
 
 // ============================================================================
 // Request/Response Schemas
@@ -60,6 +77,19 @@ const resetPasswordSchema = {
     email: t.String({ format: "email" }),
     token: t.String({ minLength: 1 }),
     newPassword: t.String({ minLength: 8 }),
+  }),
+};
+
+// Sprint 010 - Email Verification Schemas
+const verifyEmailSchema = {
+  query: t.Object({
+    token: t.String({ minLength: 1 }),
+  }),
+};
+
+const resendVerificationSchema = {
+  body: t.Object({
+    email: t.String({ format: "email" }),
   }),
 };
 
@@ -171,12 +201,39 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       const accessToken = await generateAccessToken(jwt, tokenPayload);
       const refreshToken = await generateRefreshToken(newUser.id);
 
+      // Sprint 010 - AC-1.2: Send verification email
+      setImmediate(async () => {
+        try {
+          const verificationResult = await generateVerificationToken(newUser.id);
+          if (verificationResult) {
+            const baseUrl = process.env.APP_URL || "http://localhost:3000";
+            const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationResult.token}`;
+
+            const emailContent = emailVerificationTemplate({
+              recipientName: newUser.displayName,
+              verificationUrl,
+              expiryTime: "24 hours",
+            });
+
+            await sendEmail({
+              to: normalizedEmail,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              text: emailContent.text,
+            });
+          }
+        } catch (err) {
+          console.error("Failed to send verification email:", err);
+        }
+      });
+
       set.status = 201;
       return success({
         user: {
           id: newUser.id,
           email: newUser.email,
           displayName: newUser.displayName,
+          emailVerified: newUser.isEmailVerified,
           createdAt: newUser.createdAt,
         },
         tokens: {
@@ -417,4 +474,191 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       });
     },
     resetPasswordSchema
+  )
+
+  // ========================================================================
+  // GET /auth/verify-email - Verify Email Address
+  // Sprint 010 - AC-1.3: Verifies email and updates user record
+  // AC-1.4: Token expires after 24 hours
+  // AC-1.5: Token is single-use
+  // ========================================================================
+  .get(
+    "/verify-email",
+    async ({ query, set }) => {
+      const { token } = query;
+
+      // Verify and mark email as verified
+      const result = await markEmailVerified(token);
+
+      if (!result.success) {
+        set.status = 400;
+        return error(ErrorCodes.INVALID_TOKEN, result.error || "Invalid or expired verification token");
+      }
+
+      return success({
+        message: "Email has been verified successfully. You can now use all features.",
+      });
+    },
+    verifyEmailSchema
+  )
+
+  // ========================================================================
+  // POST /auth/resend-verification - Resend Verification Email
+  // Sprint 010 - AC-1.6: Sends new verification email
+  // AC-1.7: Rate limited to 3 per hour per email (handled by global limiter)
+  // ========================================================================
+  .post(
+    "/resend-verification",
+    async ({ body, set }) => {
+      const { email } = body;
+
+      const normalizedEmail = normalizeEmail(email);
+
+      // Find user by email
+      const user = await findUserByEmail(normalizedEmail);
+
+      // Always return success to prevent email enumeration
+      if (user && !user.isEmailVerified && isUserActive(user)) {
+        // Generate new verification token (invalidates old ones)
+        const verificationResult = await generateVerificationToken(user.id);
+
+        if (verificationResult) {
+          const baseUrl = process.env.APP_URL || "http://localhost:3000";
+          const verificationUrl = `${baseUrl}/auth/verify-email?token=${verificationResult.token}`;
+
+          const emailContent = resendVerificationTemplate({
+            recipientName: user.displayName,
+            verificationUrl,
+            expiryTime: "24 hours",
+          });
+
+          // Send email asynchronously
+          setImmediate(async () => {
+            try {
+              await sendEmail({
+                to: normalizedEmail,
+                subject: emailContent.subject,
+                html: emailContent.html,
+                text: emailContent.text,
+              });
+            } catch (err) {
+              console.error("Failed to send verification email:", err);
+            }
+          });
+        }
+      }
+
+      // Always return success to prevent email enumeration
+      return success({
+        message: "If an account exists with that email and is not yet verified, a new verification link has been sent.",
+      });
+    },
+    resendVerificationSchema
+  )
+
+  // ========================================================================
+  // GET /auth/google - Google OAuth Redirect
+  // Sprint 010 - AC-2.2: Redirects to Google OAuth consent screen
+  // ========================================================================
+  .get("/google", async ({ set, redirect }) => {
+    // Check if OAuth is configured
+    if (!isGoogleOAuthConfigured()) {
+      set.status = 503;
+      return error(
+        ErrorCodes.INTERNAL_ERROR,
+        "Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+      );
+    }
+
+    // Generate state for CSRF protection
+    const state = generateOAuthState();
+
+    // Redirect to Google
+    const authUrl = getGoogleAuthUrl(state);
+    set.redirect = authUrl;
+    return redirect(authUrl);
+  })
+
+  // ========================================================================
+  // GET /auth/google/callback - Google OAuth Callback
+  // Sprint 010 - AC-2.3: Handles OAuth callback and creates/links account
+  // ========================================================================
+  .get(
+    "/google/callback",
+    async ({ query, jwt, set }) => {
+      const { code, state: stateParam, error: oauthError } = query;
+
+      // Handle OAuth errors
+      if (oauthError) {
+        set.status = 400;
+        return error(
+          ErrorCodes.INVALID_INPUT,
+          `OAuth error: ${oauthError}`
+        );
+      }
+
+      // Verify state (CSRF protection)
+      if (!stateParam || !verifyOAuthState(stateParam)) {
+        set.status = 400;
+        return error(ErrorCodes.INVALID_TOKEN, "Invalid or expired OAuth state");
+      }
+
+      // Exchange code for tokens
+      if (!code) {
+        set.status = 400;
+        return error(ErrorCodes.INVALID_INPUT, "Missing authorization code");
+      }
+
+      const tokens = await exchangeGoogleCode(code);
+      if (!tokens) {
+        set.status = 400;
+        return error(ErrorCodes.INVALID_TOKEN, "Failed to exchange authorization code");
+      }
+
+      // Get user info from Google
+      const googleUser = await getGoogleUserInfo(tokens.accessToken);
+      if (!googleUser) {
+        set.status = 400;
+        return error(ErrorCodes.INTERNAL_ERROR, "Failed to get user info from Google");
+      }
+
+      // Find or create user
+      const result = await findOrCreateGoogleUser(googleUser, tokens);
+      if (!result) {
+        set.status = 500;
+        return error(ErrorCodes.INTERNAL_ERROR, "Failed to create or link user");
+      }
+
+      // Generate JWT tokens
+      const tokenPayload: AccessTokenPayload = {
+        userId: result.user.id,
+        email: result.user.email!,
+      };
+
+      const accessToken = await generateAccessToken(jwt, tokenPayload);
+      const refreshToken = await generateRefreshToken(result.user.id);
+
+      return success({
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          emailVerified: result.user.isEmailVerified,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+          expiresIn: 900,
+        },
+        isNewUser: result.isNew,
+        accountLinked: result.linked,
+      });
+    },
+    {
+      query: t.Object({
+        code: t.Optional(t.String()),
+        state: t.Optional(t.String()),
+        error: t.Optional(t.String()),
+      }),
+    }
   );

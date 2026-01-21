@@ -7,6 +7,19 @@ import {
   getUserPreferences,
   updateUserPreferences,
 } from "../services/preferences.service";
+import { getLinkedProviders } from "../services/oauth.service";
+import {
+  hashPassword,
+  validatePasswordStrength,
+} from "../services/auth.service";
+import {
+  requestAccountDeletion,
+  cancelAccountDeletion,
+  hasPendingDeletion,
+  exportUserData,
+} from "../services/account-management.service";
+import { sendEmail } from "../services/email";
+import { accountDeletionTemplate } from "../services/email/templates";
 
 // ============================================================================
 // User Routes
@@ -36,6 +49,10 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         id: users.id,
         email: users.email,
         displayName: users.displayName,
+        isEmailVerified: users.isEmailVerified,
+        emailVerifiedAt: users.emailVerifiedAt,
+        primaryAuthProvider: users.primaryAuthProvider,
+        hasPassword: users.passwordHash,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -47,11 +64,19 @@ export const userRoutes = new Elysia({ prefix: "/users" })
       return error(ErrorCodes.NOT_FOUND, "User not found");
     }
 
-    // AC-1.16: Return profile with specified fields
+    // AC-2.7: Get linked OAuth providers
+    const linkedProviders = await getLinkedProviders(auth.userId);
+
+    // AC-1.16 & Sprint 010 AC-1.9, AC-2.7: Return profile with extended fields
     return success({
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      emailVerified: user.isEmailVerified,
+      emailVerifiedAt: user.emailVerifiedAt,
+      primaryAuthProvider: user.primaryAuthProvider,
+      hasPassword: !!user.hasPassword,
+      linkedProviders,
       createdAt: user.createdAt,
     });
   })
@@ -109,4 +134,211 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         notifyOnGroupActivity: t.Optional(t.Boolean()),
       }),
     }
-  );
+  )
+
+  // ========================================================================
+  // POST /users/me/password - Set or Change Password
+  // Sprint 010 AC-2.6: OAuth users can optionally set a password for email login
+  // ========================================================================
+  .post(
+    "/me/password",
+    async ({ auth, authError, body, set }) => {
+      if (!auth) {
+        set.status = 401;
+        return authError;
+      }
+
+      const { newPassword, currentPassword } = body;
+
+      // Get current user to check if they have a password
+      const [user] = await db
+        .select({ passwordHash: users.passwordHash })
+        .from(users)
+        .where(eq(users.id, auth.userId))
+        .limit(1);
+
+      if (!user) {
+        set.status = 404;
+        return error(ErrorCodes.NOT_FOUND, "User not found");
+      }
+
+      // If user already has password, require current password
+      if (user.passwordHash) {
+        if (!currentPassword) {
+          set.status = 400;
+          return error(
+            ErrorCodes.VALIDATION_ERROR,
+            "Current password is required to change password"
+          );
+        }
+
+        // Verify current password
+        const bcrypt = await import("bcryptjs");
+        const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isValid) {
+          set.status = 401;
+          return error(ErrorCodes.INVALID_CREDENTIALS, "Current password is incorrect");
+        }
+      }
+
+      // Validate new password strength
+      const validation = validatePasswordStrength(newPassword);
+      if (!validation.valid) {
+        set.status = 400;
+        return error(
+          ErrorCodes.VALIDATION_ERROR,
+          "Password does not meet requirements",
+          { requirements: validation.errors }
+        );
+      }
+
+      // Hash and save new password
+      const passwordHash = await hashPassword(newPassword);
+
+      await db
+        .update(users)
+        .set({
+          passwordHash,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, auth.userId));
+
+      return success({
+        message: user.passwordHash
+          ? "Password changed successfully"
+          : "Password set successfully. You can now login with email and password.",
+      });
+    },
+    {
+      body: t.Object({
+        newPassword: t.String({ minLength: 8 }),
+        currentPassword: t.Optional(t.String()),
+      }),
+    }
+  )
+
+  // ========================================================================
+  // DELETE /users/me - Request Account Deletion
+  // Sprint 010 AC-3.1: DELETE /users/me initiates account deletion request
+  // Sprint 010 AC-3.2: Account deletion has 7-day grace period
+  // Sprint 010 AC-3.3: User receives confirmation email when deletion requested
+  // ========================================================================
+  .delete("/me", async ({ auth, authError, set }) => {
+    if (!auth) {
+      set.status = 401;
+      return authError;
+    }
+
+    // Request account deletion
+    const result = await requestAccountDeletion(auth.userId);
+
+    if (!result.success) {
+      set.status = 400;
+      return error(ErrorCodes.VALIDATION_ERROR, result.error || "Failed to request deletion");
+    }
+
+    // Get user details for email
+    const [user] = await db
+      .select({
+        email: users.email,
+        displayName: users.displayName,
+      })
+      .from(users)
+      .where(eq(users.id, auth.userId))
+      .limit(1);
+
+    // AC-3.3: Send confirmation email
+    if (user?.email && result.deletionDate) {
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const cancelUrl = `${frontendUrl}/account/cancel-deletion`;
+
+      const emailContent = accountDeletionTemplate({
+        recipientName: user.displayName,
+        deletionDate: result.deletionDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+        cancelUrl,
+      });
+
+      await sendEmail({
+        to: user.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+      }).catch((err) => {
+        console.error("Failed to send deletion confirmation email:", err);
+      });
+    }
+
+    return success({
+      message: "Account deletion requested",
+      deletionDate: result.deletionDate,
+      gracePeriodDays: 7,
+    });
+  })
+
+  // ========================================================================
+  // GET /users/me/deletion-status - Get Deletion Status
+  // Sprint 010 AC-3.4: User can cancel deletion within 7-day grace period
+  // ========================================================================
+  .get("/me/deletion-status", async ({ auth, authError, set }) => {
+    if (!auth) {
+      set.status = 401;
+      return authError;
+    }
+
+    const status = await hasPendingDeletion(auth.userId);
+
+    return success({
+      pending: status.pending,
+      deletionDate: status.deletionDate,
+      canCancel: status.canCancel,
+    });
+  })
+
+  // ========================================================================
+  // POST /users/me/cancel-deletion - Cancel Account Deletion
+  // Sprint 010 AC-3.4: User can cancel deletion within 7-day grace period
+  // ========================================================================
+  .post("/me/cancel-deletion", async ({ auth, authError, set }) => {
+    if (!auth) {
+      set.status = 401;
+      return authError;
+    }
+
+    const result = await cancelAccountDeletion(auth.userId);
+
+    if (!result.success) {
+      set.status = 400;
+      return error(ErrorCodes.VALIDATION_ERROR, result.error || "Failed to cancel deletion");
+    }
+
+    return success({
+      message: "Account deletion cancelled",
+    });
+  })
+
+  // ========================================================================
+  // GET /users/me/data-export - Export User Data
+  // Sprint 010 AC-3.7: Data export returns all user data as JSON
+  // Sprint 010 AC-3.8: Data export includes: profile, groups, expenses, settlements, activity
+  // ========================================================================
+  .get("/me/data-export", async ({ auth, authError, set }) => {
+    if (!auth) {
+      set.status = 401;
+      return authError;
+    }
+
+    const data = await exportUserData(auth.userId);
+
+    if (!data) {
+      set.status = 404;
+      return error(ErrorCodes.NOT_FOUND, "User not found");
+    }
+
+    // AC-3.7 & AC-3.8: Return complete user data
+    return success(data);
+  });

@@ -122,6 +122,100 @@ EXCHANGE_RATE_CACHE_TTL=3600000
 
 Sign up for a free API key at [exchangerate-api.com](https://www.exchangerate-api.com/).
 
+## Database Migrations
+
+The project uses Drizzle ORM for database migrations.
+
+### Running Migrations
+
+```bash
+# Generate migration from schema changes
+bun run db:generate
+
+# Apply pending migrations
+bun run db:migrate
+
+# Push schema directly (development only)
+bun run db:push
+
+# Open Drizzle Studio for database visualization
+bun run db:studio
+```
+
+### Migration Workflow
+
+1. **Make schema changes** in `src/db/schema/*.ts`
+2. **Generate migration**: `bun run db:generate`
+3. **Review migration** in `drizzle/migrations/`
+4. **Test migration** on a staging environment
+5. **Apply migration**: `bun run db:migrate`
+
+### Rollback Strategy
+
+Drizzle does not provide automatic rollback. For production:
+
+1. **Always backup** before running migrations
+2. **Test migrations** in staging first
+3. **Emergency rollback**: Restore from backup
+
+```bash
+# Example backup before migration
+pg_dump $DATABASE_URL > backup-$(date +%Y%m%d).sql
+
+# Apply migration
+bun run db:migrate
+
+# If rollback needed
+psql $DATABASE_URL < backup-YYYYMMDD.sql
+```
+
+## Rate Limiting
+
+The API implements rate limiting to protect against abuse.
+
+### Default Limits
+
+| Endpoint Category | Limit | Window |
+|-------------------|-------|--------|
+| Authentication (`/auth/*`) | 5 requests | 1 minute |
+| Password reset (`/auth/forgot-password`) | 3 requests | 1 hour |
+| Social features (comments, reactions) | 30 requests | 1 minute |
+| General API endpoints | 100 requests | 1 minute |
+
+### Configuration
+
+Rate limiting is configured per-route. To customize limits in production, modify the rate limiter configuration in `src/middleware/rate-limit.ts`.
+
+### Response Headers
+
+When rate limiting is active, responses include:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in window |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when window resets |
+
+### Rate Limit Exceeded
+
+When the limit is exceeded, the API returns:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests, please try again later"
+  }
+}
+```
+
+HTTP Status: `429 Too Many Requests`
+
+### Bypassing for Tests
+
+In test environments (when `DATABASE_URL_TEST` is set), rate limiting uses relaxed limits to avoid test interference.
+
 ## Production Deployment
 
 ### Security Checklist

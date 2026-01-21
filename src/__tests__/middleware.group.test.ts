@@ -14,12 +14,26 @@ const mockIsMemberOfGroup = mock(() => Promise.resolve({ isMember: false, member
 const mockGetMemberRole = mock(() => Promise.resolve(null));
 const mockIsAdminRole = mock((role: string | null) => role === "owner" || role === "admin");
 
-// Mock the modules
+// Mock the modules - include all exports to prevent test interference
 mock.module("../services/group.service", () => ({
   findGroupById: mockFindGroupById,
   isMemberOfGroup: mockIsMemberOfGroup,
   getMemberRole: mockGetMemberRole,
   isAdminRole: mockIsAdminRole,
+  // Additional exports to prevent test isolation issues
+  generateJoinCode: mock(() => Promise.resolve("ABCD1234")),
+  createGroup: mock(() => Promise.resolve({ group: {}, member: {} })),
+  findGroupByJoinCode: mock(() => Promise.resolve(null)),
+  getGroupsByUser: mock(() => Promise.resolve([])),
+  getGroupWithMemberCount: mock(() => Promise.resolve(null)),
+  getGroupMembers: mock(() => Promise.resolve([])),
+  updateGroup: mock(() => Promise.resolve({})),
+  regenerateGroupJoinCode: mock(() => Promise.resolve("NEWCODE1")),
+  countGroupOwners: mock(() => Promise.resolve(1)),
+  transferOwnership: mock(() => Promise.resolve({ success: true })),
+  leaveGroup: mock(() => Promise.resolve({ success: true })),
+  deleteGroup: mock(() => Promise.resolve(true)),
+  joinGroup: mock(() => Promise.resolve({ success: true })),
 }));
 
 // ============================================================================

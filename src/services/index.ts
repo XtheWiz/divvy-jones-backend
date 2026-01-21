@@ -41,3 +41,7 @@ export {
 } from "./reaction.service";
 export type { ReactionType, ReactionEntityType } from "./reaction.service";
 export * from "./cache.service";
+export * from "./password-reset.service";
+export * from "./email-verification.service";
+export * from "./oauth.service";
+export * from "./account-management.service";

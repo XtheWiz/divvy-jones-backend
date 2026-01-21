@@ -18,10 +18,12 @@ export const users = pgTable(
       .notNull()
       .references(() => authProviderType.value),
     isEmailVerified: boolean("is_email_verified").notNull().default(false),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }), // AC-1.1: When email was verified
     adsOptOut: boolean("ads_opt_out").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }), // soft delete
+    deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }), // AC-3.2: Grace period tracking
   },
   (table) => ({
     idx_users_email: uniqueIndex("idx_users_email")
@@ -49,7 +51,11 @@ export const oauthAccounts = pgTable(
       .references(() => authProviderType.value),
     providerUid: text("provider_uid").notNull(),
     emailAtProvider: text("email_at_provider"),
+    refreshToken: text("refresh_token"), // AC-2.8: Encrypted OAuth refresh token
+    accessToken: text("access_token"), // Encrypted OAuth access token
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }), // When access token expires
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     oauth_accounts_unique_provider: uniqueIndex("oauth_accounts_unique_provider").on(table.provider, table.providerUid),
@@ -126,6 +132,30 @@ export const passwordResetTokens = pgTable(
 );
 
 // ============================================================================
+// EMAIL VERIFICATION TOKENS (Sprint 010 - TASK-010)
+// AC-1.4: Verification token expires after 24 hours
+// AC-1.5: Verification token is single-use
+// ============================================================================
+
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(), // Hashed token for secure storage
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), // 24-hour expiry (AC-1.4)
+    verifiedAt: timestamp("verified_at", { withTimezone: true }), // AC-1.5: Single-use - null until verified
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    idx_email_verification_tokens_user_id: index("idx_email_verification_tokens_user_id").on(table.userId),
+    idx_email_verification_tokens_expires_at: index("idx_email_verification_tokens_expires_at").on(table.expiresAt),
+  })
+);
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -143,3 +173,6 @@ export type NewUserSettings = typeof userSettings.$inferInsert;
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+export type EmailVerificationToken = typeof emailVerificationTokens.$inferSelect;
+export type NewEmailVerificationToken = typeof emailVerificationTokens.$inferInsert;

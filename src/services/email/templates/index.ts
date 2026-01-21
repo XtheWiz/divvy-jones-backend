@@ -9,6 +9,15 @@ export { expenseAddedTemplate, type ExpenseAddedTemplateData } from "./expense-a
 export { settlementRequestedTemplate, type SettlementRequestedTemplateData } from "./settlement-requested";
 export { settlementConfirmedTemplate, type SettlementConfirmedTemplateData } from "./settlement-confirmed";
 export { passwordResetTemplate, type PasswordResetTemplateData } from "./password-reset";
+export {
+  emailVerificationTemplate,
+  resendVerificationTemplate,
+  type EmailVerificationTemplateData,
+} from "./email-verification";
+export {
+  accountDeletionTemplate,
+  type AccountDeletionTemplateData,
+} from "./account-deletion";
 
 // ============================================================================
 // Template Utilities
