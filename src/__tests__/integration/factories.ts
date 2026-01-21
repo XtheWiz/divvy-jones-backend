@@ -9,6 +9,11 @@
 import { eq } from "drizzle-orm";
 import { getTestDb, testId, testEmail, schema } from "./setup";
 import * as bcrypt from "bcryptjs";
+import { customAlphabet } from "nanoid";
+
+// Join code: 8 characters, uppercase alphanumeric, no ambiguous chars
+const JOIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const generateJoinCode = customAlphabet(JOIN_CODE_ALPHABET, 8);
 
 // ============================================================================
 // Types
@@ -109,7 +114,7 @@ export async function createTestGroup(
       ownerUserId,
       name,
       defaultCurrencyCode,
-      joinCode: testId("join"),
+      joinCode: generateJoinCode(),
     })
     .returning();
 
