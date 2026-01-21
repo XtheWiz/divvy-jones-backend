@@ -16,6 +16,12 @@ import {
   isUserActive,
   type AccessTokenPayload,
 } from "../services/auth.service";
+import {
+  generateResetToken,
+  resetPassword as resetPasswordService,
+} from "../services/password-reset.service";
+import { sendEmail } from "../services/email";
+import { passwordResetTemplate } from "../services/email/templates";
 
 // ============================================================================
 // Request/Response Schemas
@@ -39,6 +45,21 @@ const loginSchema = {
 const refreshSchema = {
   body: t.Object({
     refreshToken: t.String({ minLength: 1 }),
+  }),
+};
+
+// Sprint 009 - Password Reset Schemas
+const forgotPasswordSchema = {
+  body: t.Object({
+    email: t.String({ format: "email" }),
+  }),
+};
+
+const resetPasswordSchema = {
+  body: t.Object({
+    email: t.String({ format: "email" }),
+    token: t.String({ minLength: 1 }),
+    newPassword: t.String({ minLength: 8 }),
   }),
 };
 
@@ -304,4 +325,96 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       });
     },
     refreshSchema
+  )
+
+  // ========================================================================
+  // POST /auth/forgot-password - Request Password Reset
+  // Sprint 009 - AC-4.1: Accepts email and sends reset link
+  // AC-4.8: Rate limiting (3/hour per email) - handled by global rate limit
+  // ========================================================================
+  .post(
+    "/forgot-password",
+    async ({ body, set }) => {
+      const { email } = body;
+
+      // Generate reset token (returns null if user not found)
+      // We don't reveal if email exists to prevent enumeration
+      const result = await generateResetToken(email);
+
+      // Always return success to prevent email enumeration
+      if (result) {
+        // Find user to get display name
+        const user = await findUserByEmail(email.toLowerCase().trim());
+        const displayName = user?.displayName || "User";
+
+        // Build reset URL
+        // In production, this should come from environment variable
+        const baseUrl = process.env.APP_URL || "http://localhost:3000";
+        const resetUrl = `${baseUrl}/reset-password?email=${encodeURIComponent(email)}&token=${result.token}`;
+
+        // AC-4.7: Generate email from template
+        const emailContent = passwordResetTemplate({
+          recipientName: displayName,
+          resetUrl,
+          expiryTime: "1 hour",
+        });
+
+        // Send email asynchronously (don't block response)
+        setImmediate(async () => {
+          try {
+            await sendEmail({
+              to: email,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              text: emailContent.text,
+            });
+          } catch (err) {
+            console.error("Failed to send password reset email:", err);
+          }
+        });
+      }
+
+      // Always return success message
+      return success({
+        message: "If an account exists with that email, you will receive a password reset link shortly.",
+      });
+    },
+    forgotPasswordSchema
+  )
+
+  // ========================================================================
+  // POST /auth/reset-password - Complete Password Reset
+  // Sprint 009 - AC-4.4: Accepts token and new password
+  // AC-4.5: Invalidates all existing sessions for user
+  // AC-4.6: Reset token is single-use
+  // ========================================================================
+  .post(
+    "/reset-password",
+    async ({ body, set }) => {
+      const { email, token, newPassword } = body;
+
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(newPassword);
+      if (!passwordValidation.valid) {
+        set.status = 400;
+        return error(
+          ErrorCodes.VALIDATION_ERROR,
+          "Password does not meet requirements",
+          { requirements: passwordValidation.errors }
+        );
+      }
+
+      // Reset the password (verifies token, updates password, invalidates sessions)
+      const result = await resetPasswordService(email, token, newPassword);
+
+      if (!result.success) {
+        set.status = 400;
+        return error(ErrorCodes.INVALID_TOKEN, result.error || "Invalid or expired reset token");
+      }
+
+      return success({
+        message: "Password has been reset successfully. Please log in with your new password.",
+      });
+    },
+    resetPasswordSchema
   );

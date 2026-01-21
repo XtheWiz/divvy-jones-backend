@@ -102,6 +102,30 @@ export const refreshTokens = pgTable(
 );
 
 // ============================================================================
+// PASSWORD RESET TOKENS (Sprint 009 - TASK-013)
+// AC-4.2: Reset token generated with 1-hour expiry
+// AC-4.3: Reset token stored securely (hashed in database)
+// ============================================================================
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(), // Hashed token for secure storage (AC-4.3)
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), // 1-hour expiry (AC-4.2)
+    usedAt: timestamp("used_at", { withTimezone: true }), // AC-4.6: Single-use - null until used
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    idx_password_reset_tokens_user_id: index("idx_password_reset_tokens_user_id").on(table.userId),
+    idx_password_reset_tokens_expires_at: index("idx_password_reset_tokens_expires_at").on(table.expiresAt),
+  })
+);
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -116,3 +140,6 @@ export type NewOauthAccount = typeof oauthAccounts.$inferInsert;
 
 export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;

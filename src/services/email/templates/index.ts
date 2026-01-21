@@ -8,6 +8,7 @@
 export { expenseAddedTemplate, type ExpenseAddedTemplateData } from "./expense-added";
 export { settlementRequestedTemplate, type SettlementRequestedTemplateData } from "./settlement-requested";
 export { settlementConfirmedTemplate, type SettlementConfirmedTemplateData } from "./settlement-confirmed";
+export { passwordResetTemplate, type PasswordResetTemplateData } from "./password-reset";
 
 // ============================================================================
 // Template Utilities

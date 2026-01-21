@@ -1,15 +1,21 @@
 /**
  * Integration Test Setup
  * Sprint 003 - TASK-011
+ * Sprint 009 - Enhanced with transaction isolation (TASK-002)
  *
  * Provides test database connection, cleanup utilities, and test helpers
  * for running integration tests against a real database.
  *
  * IMPORTANT: Tests should use DATABASE_URL_TEST to avoid affecting development data.
+ *
+ * Key Features (Sprint 009):
+ * - AC-1.2: DATABASE_URL_TEST environment variable properly used
+ * - AC-1.3: Test database isolation via transactions or cleanup
+ * - Transaction-based isolation for individual tests
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import * as schema from "../../db/schema";
 import { sql } from "drizzle-orm";
 
@@ -225,6 +231,81 @@ export function testEmail(): string {
  */
 export function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ============================================================================
+// Transaction-Based Isolation (Sprint 009 - AC-1.3)
+// ============================================================================
+
+/**
+ * Transaction context for test isolation
+ * Each test can run in its own transaction that's rolled back at the end
+ */
+interface TransactionContext {
+  client: PoolClient;
+  db: ReturnType<typeof drizzle<typeof schema>>;
+}
+
+let activeTransaction: TransactionContext | null = null;
+
+/**
+ * Start a transaction for test isolation
+ * Use this in beforeEach for per-test isolation
+ */
+export async function beginTransaction(): Promise<TransactionContext> {
+  const pool = testPool || createTestPool();
+  const client = await pool.connect();
+  await client.query("BEGIN");
+
+  const db = drizzle(client, { schema });
+
+  activeTransaction = { client, db };
+  return activeTransaction;
+}
+
+/**
+ * Rollback the current transaction
+ * Use this in afterEach to clean up test data
+ */
+export async function rollbackTransaction(): Promise<void> {
+  if (activeTransaction) {
+    await activeTransaction.client.query("ROLLBACK");
+    activeTransaction.client.release();
+    activeTransaction = null;
+  }
+}
+
+/**
+ * Get the current transaction's database instance
+ * Falls back to the shared test database if no transaction is active
+ */
+export function getTransactionDb(): ReturnType<typeof drizzle<typeof schema>> {
+  return activeTransaction?.db || getTestDb();
+}
+
+// ============================================================================
+// Environment Check Utilities (Sprint 009)
+// ============================================================================
+
+/**
+ * Check if integration tests can run
+ * Returns true if DATABASE_URL_TEST is set
+ */
+export function canRunIntegrationTests(): boolean {
+  return !!process.env.DATABASE_URL_TEST;
+}
+
+/**
+ * Skip integration tests if DATABASE_URL_TEST is not set
+ * Use this at the top of test files:
+ *   if (skipIfNoTestDb()) return;
+ */
+export function skipIfNoTestDb(): boolean {
+  if (!process.env.DATABASE_URL_TEST) {
+    console.log("⚠️  Skipping integration tests: DATABASE_URL_TEST not set");
+    return true;
+  }
+  return false;
 }
 
 // ============================================================================

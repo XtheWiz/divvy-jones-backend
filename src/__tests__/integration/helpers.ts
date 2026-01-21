@@ -1,9 +1,14 @@
 /**
  * Integration Test Helpers
  * Sprint 003 - TASK-012
+ * Sprint 009 - Enhanced with app factory pattern (TASK-003)
  *
  * Provides HTTP request utilities and authentication helpers
  * for testing API endpoints.
+ *
+ * Key Features (Sprint 009):
+ * - AC-1.4: Fresh Elysia app instance created per test file
+ * - AC-1.5: Token invalidation issues resolved via fresh instances
  */
 
 import { Elysia } from "elysia";
@@ -21,16 +26,67 @@ import { routes } from "../../routes";
 type AnyElysiaApp = { handle: (req: Request) => Promise<Response> };
 
 // ============================================================================
-// Test App Setup
+// Test App Factory (Sprint 009 - AC-1.4, AC-1.5)
 // ============================================================================
 
 /**
- * Create a test application instance
- * This creates a fresh Elysia app with all routes for testing
+ * Test app factory configuration options
  */
-export function createTestApp(): AnyElysiaApp {
-  return new Elysia()
-    .use(routes);
+export interface TestAppOptions {
+  /** If true, skip rate limiting for tests (default: true) */
+  skipRateLimiting?: boolean;
+  /** Custom prefix for routes (default: none) */
+  prefix?: string;
+}
+
+/**
+ * Create a fresh test application instance
+ *
+ * IMPORTANT (Sprint 009 - AC-1.4): Always call this function to create
+ * a new app instance for each test file to avoid state leakage.
+ *
+ * Previously, sharing a single app instance caused issues where:
+ * - User cleanup in beforeEach invalidated tokens from previous tests
+ * - State from one test leaked into another
+ *
+ * Now each test file should create its own instance:
+ * ```typescript
+ * let app: ReturnType<typeof createTestApp>;
+ *
+ * beforeAll(async () => {
+ *   await beforeAllTests();
+ *   app = createTestApp();
+ * });
+ * ```
+ */
+export function createTestApp(options: TestAppOptions = {}): AnyElysiaApp {
+  const {
+    skipRateLimiting = true,
+    prefix,
+  } = options;
+
+  // Set environment variable to bypass rate limiting in tests
+  if (skipRateLimiting) {
+    process.env.SKIP_RATE_LIMITING = "true";
+  }
+
+  const app = new Elysia();
+
+  // Add prefix if specified
+  if (prefix) {
+    return app.group(prefix, (app) => app.use(routes)) as unknown as AnyElysiaApp;
+  }
+
+  return app.use(routes) as unknown as AnyElysiaApp;
+}
+
+/**
+ * Clean up test app resources
+ * Call this in afterAll if needed
+ */
+export function cleanupTestApp(): void {
+  // Reset rate limiting bypass
+  delete process.env.SKIP_RATE_LIMITING;
 }
 
 // ============================================================================

@@ -1,6 +1,7 @@
 /**
  * Comment Routes
  * Sprint 008 - TASK-006
+ * Sprint 009 - Refactored to use group middleware (TASK-007)
  *
  * Routes for expense comments.
  * AC-1.4: POST /groups/:groupId/expenses/:expenseId/comments creates a new comment
@@ -8,12 +9,14 @@
  * AC-1.6: PUT /groups/:groupId/expenses/:expenseId/comments/:commentId updates comment
  * AC-1.7: DELETE /groups/:groupId/expenses/:expenseId/comments/:commentId soft-deletes comment
  * AC-1.8: Only comment author can edit/delete their own comments
+ *
+ * Sprint 009 - AC-2.5: Routes refactored to use requireGroupMember middleware
  */
 
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes, paginated } from "../lib/responses";
-import { requireAuth } from "../middleware/auth";
-import { findGroupById, isMemberOfGroup } from "../services/group.service";
+import { requireGroupMember } from "../middleware/group";
+import { findGroupById } from "../services/group.service";
 import {
   createComment,
   listComments,
@@ -22,7 +25,6 @@ import {
   deleteComment,
   isCommentAuthor,
   expenseExistsInGroup,
-  getMemberIdForUser,
   validateCommentContent,
   MAX_COMMENT_LENGTH,
   getCommentWithAuthor,
@@ -70,51 +72,27 @@ const listCommentsSchema = {
 
 // ============================================================================
 // Comment Routes
+// Sprint 009 - AC-2.5: Using requireGroupMember middleware
 // ============================================================================
 
 export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:expenseId/comments" })
-  .use(requireAuth)
+  .use(requireGroupMember)
 
   // ========================================================================
   // POST /groups/:groupId/expenses/:expenseId/comments - Create Comment
   // AC-1.4: POST creates a new comment
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .post(
     "/",
-    async ({ params, body, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
+    async ({ params, body, auth, groupId, memberId, set }) => {
+      const { expenseId } = params;
 
-      const { groupId, expenseId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      // Check expense exists in this group (still needed - expense-specific validation)
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
-      }
-
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
       }
 
       // Validate content
@@ -124,11 +102,11 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
         return error(ErrorCodes.VALIDATION_ERROR, validation.error!);
       }
 
-      // Create comment
+      // Create comment (Sprint 009: memberId from middleware)
       const result = await createComment({
         expenseId,
-        groupId,
-        authorMemberId: memberId,
+        groupId: groupId!,
+        authorMemberId: memberId!,
         content: body.content,
       });
 
@@ -146,19 +124,19 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
           if (!commentWithAuthor) return;
 
           // Get expense details
-          const expense = await getExpenseDetails(expenseId, groupId);
+          const expense = await getExpenseDetails(expenseId, groupId!);
           if (!expense) return;
 
           // Get expense participants
           const participantUserIds = await getExpenseParticipantUserIds(expenseId);
 
           // Get group name
-          const grp = await findGroupById(groupId);
+          const grp = await findGroupById(groupId!);
           const groupName = grp?.name || "Unknown Group";
 
           // Notify each participant (except the author)
           for (const participantUserId of participantUserIds) {
-            if (participantUserId !== auth.userId) {
+            if (participantUserId !== auth!.userId) {
               await notifyCommentAdded(
                 participantUserId,
                 commentWithAuthor.author.displayName,
@@ -188,33 +166,15 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
   // ========================================================================
   // GET /groups/:groupId/expenses/:expenseId/comments - List Comments
   // AC-1.5: GET lists all comments (paginated)
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .get(
     "/",
-    async ({ params, query, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, query, groupId, set }) => {
+      const { expenseId } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
@@ -224,7 +184,7 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
       const page = query.page ? Number(query.page) : 1;
       const limit = query.limit ? Number(query.limit) : 20;
 
-      const result = await listComments(expenseId, groupId, { page, limit });
+      const result = await listComments(expenseId, groupId!, { page, limit });
 
       return paginated(result.comments, page, limit, result.total);
     },
@@ -235,40 +195,22 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
   // PUT /groups/:groupId/expenses/:expenseId/comments/:commentId - Update Comment
   // AC-1.6: PUT updates comment
   // AC-1.8: Only comment author can edit/delete their own comments
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .put(
     "/:commentId",
-    async ({ params, body, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId, commentId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, body, groupId, memberId, set }) => {
+      const { expenseId, commentId } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
       }
 
       // Check comment exists
-      const comment = await getCommentById(commentId, groupId);
+      const comment = await getCommentById(commentId, groupId!);
       if (!comment) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Comment not found");
@@ -280,15 +222,8 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
         return error(ErrorCodes.NOT_FOUND, "Comment not found");
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // AC-1.8: Check if user is the author
-      const isAuthor = await isCommentAuthor(commentId, memberId);
+      // AC-1.8: Check if user is the author (using memberId from middleware)
+      const isAuthor = await isCommentAuthor(commentId, memberId!);
       if (!isAuthor) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You can only edit your own comments");
@@ -302,7 +237,7 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
       }
 
       // Update comment
-      const result = await updateComment(commentId, groupId, {
+      const result = await updateComment(commentId, groupId!, {
         content: body.content,
       });
 
@@ -325,40 +260,22 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
   // DELETE /groups/:groupId/expenses/:expenseId/comments/:commentId - Delete Comment
   // AC-1.7: DELETE soft-deletes comment
   // AC-1.8: Only comment author can edit/delete their own comments
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .delete(
     "/:commentId",
-    async ({ params, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId, commentId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, groupId, memberId, set }) => {
+      const { expenseId, commentId } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
       }
 
       // Check comment exists
-      const comment = await getCommentById(commentId, groupId);
+      const comment = await getCommentById(commentId, groupId!);
       if (!comment) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Comment not found");
@@ -370,22 +287,15 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
         return error(ErrorCodes.NOT_FOUND, "Comment not found");
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // AC-1.8: Check if user is the author
-      const isAuthor = await isCommentAuthor(commentId, memberId);
+      // AC-1.8: Check if user is the author (using memberId from middleware)
+      const isAuthor = await isCommentAuthor(commentId, memberId!);
       if (!isAuthor) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You can only delete your own comments");
       }
 
       // Delete comment
-      const result = await deleteComment(commentId, groupId);
+      const result = await deleteComment(commentId, groupId!);
 
       if (!result.success) {
         set.status = 400;

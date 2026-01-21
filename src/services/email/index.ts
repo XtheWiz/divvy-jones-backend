@@ -181,3 +181,34 @@ export function getEmailService(): EmailService {
 export function resetEmailService(): void {
   defaultEmailService = null;
 }
+
+// ============================================================================
+// Convenience Functions
+// ============================================================================
+
+/**
+ * Send an email using the default email service
+ * Convenience function that wraps getEmailService().send()
+ *
+ * @param options - Email message options
+ * @returns Promise with the send result
+ */
+export async function sendEmail(options: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+}): Promise<EmailSendResult> {
+  const service = getEmailService();
+
+  const message: EmailMessage = {
+    to: Array.isArray(options.to)
+      ? options.to.map((email) => ({ email }))
+      : [{ email: options.to }],
+    subject: options.subject,
+    html: options.html,
+    ...(options.text && { text: options.text }),
+  };
+
+  return service.send(message);
+}

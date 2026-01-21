@@ -1,6 +1,7 @@
 /**
  * Reaction Routes
  * Sprint 008 - TASK-011
+ * Sprint 009 - Refactored to use group middleware (TASK-007)
  *
  * Routes for reactions on expenses and settlements.
  * AC-2.3: POST adds or toggles a reaction
@@ -9,12 +10,13 @@
  * AC-2.6: Settlement endpoints also support reactions
  * AC-2.7: Support reaction types: thumbsUp, thumbsDown, heart, laugh, surprised, angry
  * AC-2.8: Reaction type is validated against allowed enum values
+ *
+ * Sprint 009 - AC-2.5: Routes refactored to use requireGroupMember middleware
  */
 
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes } from "../lib/responses";
-import { requireAuth } from "../middleware/auth";
-import { findGroupById, isMemberOfGroup } from "../services/group.service";
+import { requireGroupMember } from "../middleware/group";
 import {
   toggleReaction,
   removeReaction,
@@ -22,7 +24,6 @@ import {
   getReactionsGroupedByType,
   expenseExistsInGroup,
   settlementExistsInGroup,
-  getMemberIdForUser,
   validateReactionType,
   REACTION_TYPES,
 } from "../services/reaction.service";
@@ -61,41 +62,24 @@ const addReactionSchema = {
 
 // ============================================================================
 // Expense Reaction Routes
+// Sprint 009 - AC-2.5: Using requireGroupMember middleware
 // ============================================================================
 
 export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:expenseId/reactions" })
-  .use(requireAuth)
+  .use(requireGroupMember)
 
   // ========================================================================
   // POST /groups/:groupId/expenses/:expenseId/reactions - Toggle Reaction
   // AC-2.3: POST adds or toggles a reaction
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .post(
     "/",
-    async ({ params, body, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, body, groupId, memberId, set }) => {
+      const { expenseId } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
@@ -110,15 +94,8 @@ export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expe
         );
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // Toggle reaction
-      const result = await toggleReaction("expense", expenseId, groupId, memberId, body.type);
+      // Toggle reaction (Sprint 009: memberId from middleware)
+      const result = await toggleReaction("expense", expenseId, groupId!, memberId!, body.type);
 
       return success({
         added: result.added,
@@ -140,42 +117,21 @@ export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expe
   // ========================================================================
   // GET /groups/:groupId/expenses/:expenseId/reactions - Get Reactions
   // AC-2.5: GET includes reaction counts and current user's reactions
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .get(
     "/",
-    async ({ params, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, groupId, memberId, set }) => {
+      const { expenseId } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-
-      // Get reaction summary
+      // Get reaction summary (Sprint 009: memberId from middleware)
       const summary = await getReactionSummary("expense", expenseId, memberId || undefined);
 
       // Get detailed reactions (who reacted)
@@ -195,33 +151,15 @@ export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expe
   // ========================================================================
   // DELETE /groups/:groupId/expenses/:expenseId/reactions/:type - Remove Reaction
   // AC-2.4: DELETE removes a reaction
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .delete(
     "/:type",
-    async ({ params, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, expenseId, type } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, groupId, memberId, set }) => {
+      const { expenseId, type } = params;
 
       // Check expense exists in this group
-      const expenseExists = await expenseExistsInGroup(expenseId, groupId);
+      const expenseExists = await expenseExistsInGroup(expenseId, groupId!);
       if (!expenseExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Expense not found");
@@ -236,15 +174,8 @@ export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expe
         );
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // Remove reaction
-      const result = await removeReaction("expense", expenseId, memberId, type);
+      // Remove reaction (Sprint 009: memberId from middleware)
+      const result = await removeReaction("expense", expenseId, memberId!, type);
 
       if (!result.success) {
         set.status = 404;
@@ -264,40 +195,23 @@ export const expenseReactionRoutes = new Elysia({ prefix: "/groups/:groupId/expe
 // ============================================================================
 // Settlement Reaction Routes
 // AC-2.6: Settlement endpoints also support reactions
+// Sprint 009 - AC-2.5: Using requireGroupMember middleware
 // ============================================================================
 
 export const settlementReactionRoutes = new Elysia({ prefix: "/groups/:groupId/settlements/:settlementId/reactions" })
-  .use(requireAuth)
+  .use(requireGroupMember)
 
   // ========================================================================
   // POST /groups/:groupId/settlements/:settlementId/reactions - Toggle Reaction
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .post(
     "/",
-    async ({ params, body, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, settlementId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, body, groupId, memberId, set }) => {
+      const { settlementId } = params;
 
       // Check settlement exists in this group
-      const settlementExists = await settlementExistsInGroup(settlementId, groupId);
+      const settlementExists = await settlementExistsInGroup(settlementId, groupId!);
       if (!settlementExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Settlement not found");
@@ -312,15 +226,8 @@ export const settlementReactionRoutes = new Elysia({ prefix: "/groups/:groupId/s
         );
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // Toggle reaction
-      const result = await toggleReaction("settlement", settlementId, groupId, memberId, body.type);
+      // Toggle reaction (Sprint 009: memberId from middleware)
+      const result = await toggleReaction("settlement", settlementId, groupId!, memberId!, body.type);
 
       return success({
         added: result.added,
@@ -341,42 +248,21 @@ export const settlementReactionRoutes = new Elysia({ prefix: "/groups/:groupId/s
 
   // ========================================================================
   // GET /groups/:groupId/settlements/:settlementId/reactions - Get Reactions
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .get(
     "/",
-    async ({ params, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, settlementId } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, groupId, memberId, set }) => {
+      const { settlementId } = params;
 
       // Check settlement exists in this group
-      const settlementExists = await settlementExistsInGroup(settlementId, groupId);
+      const settlementExists = await settlementExistsInGroup(settlementId, groupId!);
       if (!settlementExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Settlement not found");
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-
-      // Get reaction summary
+      // Get reaction summary (Sprint 009: memberId from middleware)
       const summary = await getReactionSummary("settlement", settlementId, memberId || undefined);
 
       // Get detailed reactions (who reacted)
@@ -395,33 +281,15 @@ export const settlementReactionRoutes = new Elysia({ prefix: "/groups/:groupId/s
 
   // ========================================================================
   // DELETE /groups/:groupId/settlements/:settlementId/reactions/:type - Remove Reaction
+  // Sprint 009: Group membership validated by middleware
   // ========================================================================
   .delete(
     "/:type",
-    async ({ params, auth, authError, set }) => {
-      if (!auth) {
-        set.status = 401;
-        return authError;
-      }
-
-      const { groupId, settlementId, type } = params;
-
-      // Check group exists
-      const group = await findGroupById(groupId);
-      if (!group) {
-        set.status = 404;
-        return error(ErrorCodes.NOT_FOUND, "Group not found");
-      }
-
-      // Check user is member
-      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
-      if (!isMember) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
+    async ({ params, groupId, memberId, set }) => {
+      const { settlementId, type } = params;
 
       // Check settlement exists in this group
-      const settlementExists = await settlementExistsInGroup(settlementId, groupId);
+      const settlementExists = await settlementExistsInGroup(settlementId, groupId!);
       if (!settlementExists) {
         set.status = 404;
         return error(ErrorCodes.NOT_FOUND, "Settlement not found");
@@ -436,15 +304,8 @@ export const settlementReactionRoutes = new Elysia({ prefix: "/groups/:groupId/s
         );
       }
 
-      // Get user's member ID
-      const memberId = await getMemberIdForUser(auth.userId, groupId);
-      if (!memberId) {
-        set.status = 403;
-        return error(ErrorCodes.NOT_MEMBER, "You are not a member of this group");
-      }
-
-      // Remove reaction
-      const result = await removeReaction("settlement", settlementId, memberId, type);
+      // Remove reaction (Sprint 009: memberId from middleware)
+      const result = await removeReaction("settlement", settlementId, memberId!, type);
 
       if (!result.success) {
         set.status = 404;
