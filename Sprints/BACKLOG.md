@@ -58,14 +58,14 @@ This document contains all features and user stories prioritized for future spri
 - [x] Currency list endpoint with live rates *(Sprint 005)*
 - [x] Balance/settlement conversion to target currency *(Sprint 005)*
 
-#### BL-006: Notifications 🔄 IN PROGRESS (Sprint 006)
+#### ~~BL-006: Notifications~~ ✅ COMPLETE (Sprint 003 + 006)
 **Description:** Real-time and push notifications for activities
 **Acceptance Criteria:**
 - [x] Expense added notifications *(Sprint 003)*
 - [x] Settlement reminders *(Sprint 003)*
 - [x] Group activity updates *(Sprint 003)*
-- [ ] Configurable notification preferences *(Sprint 006)*
-- [ ] Email notifications *(Sprint 006)*
+- [x] Configurable notification preferences *(Sprint 006)*
+- [x] Email notifications *(Sprint 006)*
 - [ ] Push notifications *(deferred - requires mobile)*
 
 ### P2 - Medium Priority
@@ -98,6 +98,14 @@ This document contains all features and user stories prioritized for future spri
 ---
 
 ## Recently Completed
+
+### Sprint 006 (2026-01-21)
+| Item | Features Delivered |
+|------|-------------------|
+| BL-006 | User Preferences (notification settings, email notifications, filtering) |
+| Feature | Email Service (SMTP provider, templates for expense/settlement notifications) |
+| Feature | Activity Log Archival (archive schema, archival service, admin endpoints) |
+| Tech Debt | CI improvements, integration tests for currencies/export |
 
 ### Sprint 005 (2026-01-21)
 | Item | Features Delivered |
@@ -145,40 +153,45 @@ This document contains all features and user stories prioritized for future spri
 | 003 | 55 | 55 | 100% |
 | 004 | 47 | 47 | 100% |
 | 005 | 35 | 35 | 100% |
+| 006 | 30 | 30 | 100% |
 
-**Average Velocity:** 98.6%
+**Average Velocity:** 98.9%
+**Total ACs Delivered:** 270
 
 ---
 
 ## Upcoming Sprint Candidates
 
-### Sprint 006 (Active)
-**Focus:** Technical Debt & Notifications
-**Status:** Defined - Ready for Planning
+### Sprint 007 (Active)
+**Focus:** PDF Export, Analytics, Recurring Expenses
+**Status:** Defined - Ready for Implementation
 
-1. **Technical Debt (P0)** - 10 ACs
-   - Fix pre-existing TypeScript errors in Drizzle schema
-   - Set up DATABASE_URL_TEST in CI
-   - Add integration tests for Sprint 005 features
+1. **Sprint 006 Cleanup (P0)** - 4 ACs
+   - Retrospective and QA report
+   - Backlog updates
 
-2. **BL-006 Completion (P1)** - 14 ACs
-   - User preferences schema and API
-   - Email notification service
-   - Notification filtering by preferences
+2. **PDF Export (P1)** - 8 ACs
+   - PDF generation service
+   - PDF export endpoint with date filtering
 
-3. **Activity Log Archival (P2)** - 6 ACs
-   - Archive table and archival process
-   - Scheduled archival job
+3. **Spending Analytics (P1)** - 10 ACs
+   - Summary endpoint (totals, averages, member breakdown)
+   - Category breakdown
+   - Spending trends over time
 
-### Sprint 007 (Tentative)
-1. **BL-007 Completion** - PDF export, analytics dashboard
-2. **BL-008** - Recurring expenses
-3. **Performance** - Caching, query optimization
+4. **Recurring Expenses (P2)** - 12 ACs
+   - Recurring expense schema and CRUD API
+   - Automated expense generation job
 
-### Sprint 008 (Future)
+### Sprint 008 (Tentative)
 1. **BL-009** - Social features (comments, reactions)
 2. **Push Notifications** - Mobile/web push (requires service worker)
-3. **Mobile API** - Optimizations for mobile clients
+3. **Performance** - Caching, query optimization
+
+### Sprint 009 (Future)
+1. **Mobile API** - Optimizations for mobile clients
+2. **Password Reset** - BL-001 completion
+3. **Advanced Analytics** - Charts/graphs, custom reports
 
 ---
 
