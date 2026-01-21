@@ -54,6 +54,13 @@ export const settlements = pgTable(
     idx_settlements_status: index("idx_settlements_status")
       .on(table.status)
       .where(sql`status = 'pending'`),
+    // Sprint 008 - TASK-014: Optimized indexes for balance calculations
+    // AC-3.5: Database indexes added for frequently filtered columns
+    idx_settlements_group_status: index("idx_settlements_group_status")
+      .on(table.groupId, table.status),
+    idx_settlements_group_confirmed: index("idx_settlements_group_confirmed")
+      .on(table.groupId)
+      .where(sql`status = 'confirmed'`),
     settlements_different_members: check(
       "settlements_different_members",
       sql`${table.payerMemberId} <> ${table.payeeMemberId}`

@@ -60,6 +60,17 @@ export const expenses = pgTable(
     idx_expenses_date: index("idx_expenses_date")
       .on(table.expenseDate)
       .where(sql`deleted_at IS NULL`),
+    // Sprint 008 - TASK-014: Optimized indexes for analytics queries
+    // AC-3.5: Database indexes added for frequently filtered columns
+    idx_expenses_group_date: index("idx_expenses_group_date")
+      .on(table.groupId, table.expenseDate)
+      .where(sql`deleted_at IS NULL`),
+    idx_expenses_category: index("idx_expenses_category")
+      .on(table.category)
+      .where(sql`deleted_at IS NULL`),
+    idx_expenses_group_category: index("idx_expenses_group_category")
+      .on(table.groupId, table.category)
+      .where(sql`deleted_at IS NULL`),
   })
 );
 

@@ -20,6 +20,8 @@ import {
 } from "./expenses";
 import { settlements, evidences } from "./settlements";
 import { notifications, activityLog } from "./notifications";
+import { expenseComments } from "./comments";
+import { reactions } from "./reactions";
 
 // ============================================================================
 // USER RELATIONS
@@ -132,6 +134,8 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   leaveRequests: many(leaveRequests),
   invites: many(groupInvites),
   activityLogs: many(activityLog),
+  comments: many(expenseComments),
+  reactions: many(reactions),
 }));
 
 export const groupCurrenciesRelations = relations(groupCurrencies, ({ one }) => ({
@@ -169,6 +173,8 @@ export const groupMembersRelations = relations(groupMembers, ({ one, many }) => 
   approvedLeaveRequests: many(leaveRequests, { relationName: "approver" }),
   issuedInvites: many(groupInvites),
   activityLogs: many(activityLog),
+  comments: many(expenseComments),
+  reactions: many(reactions),
 }));
 
 export const leaveRequestsRelations = relations(leaveRequests, ({ one }) => ({
@@ -224,6 +230,7 @@ export const expensesRelations = relations(expenses, ({ one, many }) => ({
   payers: many(expensePayers),
   ocrReceipts: many(ocrReceipts),
   evidences: many(evidences),
+  comments: many(expenseComments),
 }));
 
 export const expenseItemsRelations = relations(expenseItems, ({ one, many }) => ({
@@ -330,6 +337,40 @@ export const activityLogRelations = relations(activityLog, ({ one }) => ({
   }),
   actor: one(groupMembers, {
     fields: [activityLog.actorMemberId],
+    references: [groupMembers.id],
+  }),
+}));
+
+// ============================================================================
+// COMMENT RELATIONS
+// ============================================================================
+
+export const expenseCommentsRelations = relations(expenseComments, ({ one }) => ({
+  expense: one(expenses, {
+    fields: [expenseComments.expenseId],
+    references: [expenses.id],
+  }),
+  group: one(groups, {
+    fields: [expenseComments.groupId],
+    references: [groups.id],
+  }),
+  author: one(groupMembers, {
+    fields: [expenseComments.authorMemberId],
+    references: [groupMembers.id],
+  }),
+}));
+
+// ============================================================================
+// REACTION RELATIONS
+// ============================================================================
+
+export const reactionsRelations = relations(reactions, ({ one }) => ({
+  group: one(groups, {
+    fields: [reactions.groupId],
+    references: [groups.id],
+  }),
+  member: one(groupMembers, {
+    fields: [reactions.memberId],
     references: [groupMembers.id],
   }),
 }));

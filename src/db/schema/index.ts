@@ -15,6 +15,8 @@ export * from "./expenses";
 export * from "./settlements";
 export * from "./notifications";
 export * from "./recurring";
+export * from "./comments";
+export * from "./reactions";
 
 // Relations
 export * from "./relations";

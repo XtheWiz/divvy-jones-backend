@@ -63,7 +63,7 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
       }
 
       // AC-2.7: Only group members can export
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
@@ -134,7 +134,7 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
       }
 
       // AC-2.7: Only group members can export
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
@@ -207,7 +207,7 @@ export const exportRoutes = new Elysia({ prefix: "/groups/:groupId/export" })
       }
 
       // AC-1.7: Only group members can export
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");

@@ -52,17 +52,17 @@ afterAll(async () => {
 // ============================================================================
 
 async function loginAndGetToken(email: string, password: string): Promise<string> {
-  const response = await post<ApiResponse<{ accessToken: string }>>(
+  const response = await post<ApiResponse<{ tokens: { accessToken: string } }>>(
     app,
     "/v1/auth/login",
     { email, password }
   );
 
-  if (!response.body.success || !response.body.data) {
+  if (!response.body.success || !response.body.data?.tokens) {
     throw new Error(`Login failed: ${JSON.stringify(response.body)}`);
   }
 
-  return response.body.data.accessToken;
+  return response.body.data.tokens.accessToken;
 }
 
 async function createTestScenarioWithExpenses() {
@@ -255,10 +255,12 @@ describe("GET /v1/groups/:groupId/export/json", () => {
     expect(contentDisposition).toContain("attachment");
     expect(contentDisposition).toContain(".json");
 
-    // Check JSON content structure
+    // Check JSON content structure - response format is { metadata: {...}, expenses: [...] }
     const json = response.body as Record<string, unknown>;
-    expect(json.groupId).toBe(scenario.group.id);
-    expect(json.groupName).toBe("Test Export Group");
+    const metadata = json.metadata as Record<string, unknown>;
+    const group = metadata.group as Record<string, unknown>;
+    expect(group.id).toBe(scenario.group.id);
+    expect(group.name).toBe("Test Export Group");
     expect(json.expenses).toBeArray();
     expect((json.expenses as unknown[]).length).toBeGreaterThan(0);
   });
@@ -278,14 +280,14 @@ describe("GET /v1/groups/:groupId/export/json", () => {
       { headers: authHeader(token) }
     );
 
-    // Assert
+    // Assert - expense fields are: id, title, amount, currency
     const json = response.body as Record<string, unknown>;
     const expenses = json.expenses as Array<Record<string, unknown>>;
 
     expect(expenses[0].id).toBeDefined();
-    expect(expenses[0].name).toBe("Test Expense");
-    expect(expenses[0].subtotal).toBeDefined();
-    expect(expenses[0].currencyCode).toBe("USD");
+    expect(expenses[0].title).toBe("Test Expense");
+    expect(expenses[0].amount).toBeDefined();
+    expect(expenses[0].currency).toBe("USD");
   });
 
   it("should support date range filtering", async () => {

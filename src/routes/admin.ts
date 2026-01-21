@@ -2,10 +2,12 @@
  * Admin Routes
  * Sprint 006 - TASK-011
  * Sprint 007 - TASK-015
+ * Sprint 008 - TASK-016
  *
  * Administrative endpoints for system management.
  * AC-2.4: Archival can be triggered manually via admin endpoint
  * AC-3.11: Recurring job can be triggered manually via admin endpoint
+ * AC-3.4: Cache stats endpoint for monitoring (admin only)
  */
 
 import { Elysia, t } from "elysia";
@@ -16,6 +18,7 @@ import {
   getArchivalCandidateCount,
 } from "../services/archival.service";
 import { generateDueExpenses } from "../services/recurring.service";
+import { getCacheService } from "../services/cache.service";
 
 // ============================================================================
 // Admin API Key Authentication
@@ -180,6 +183,110 @@ export const adminRoutes = new Elysia({ prefix: "/admin" })
         summary: "Generate due recurring expenses",
         description:
           "Manually trigger generation of all due recurring expenses. This processes all active recurring rules that have passed their next occurrence date.",
+        tags: ["Admin"],
+      },
+    }
+  )
+
+  // ========================================================================
+  // GET /admin/cache/stats - Get Cache Statistics
+  // Sprint 008 - AC-3.4: Cache stats endpoint for monitoring (admin only)
+  // ========================================================================
+  .get(
+    "/cache/stats",
+    async ({ isAdmin, set }) => {
+      if (!isAdmin) {
+        set.status = 403;
+        return error(ErrorCodes.FORBIDDEN, "Admin access required");
+      }
+
+      const cache = getCacheService();
+      const stats = cache.getStats();
+
+      return success({
+        stats: {
+          hits: stats.hits,
+          misses: stats.misses,
+          sets: stats.sets,
+          invalidations: stats.invalidations,
+          size: stats.size,
+          hitRate: stats.hitRate,
+          memoryUsageBytes: stats.memoryUsageBytes,
+          memoryUsageMB: Math.round((stats.memoryUsageBytes / 1024 / 1024) * 100) / 100,
+        },
+        keys: stats.keys,
+      });
+    },
+    {
+      detail: {
+        summary: "Get cache statistics",
+        description:
+          "Returns cache statistics including hit/miss counts, size, and memory usage. Requires admin API key.",
+        tags: ["Admin"],
+      },
+    }
+  )
+
+  // ========================================================================
+  // POST /admin/cache/clear - Clear All Cache
+  // Sprint 008 - AC-3.3: Cache invalidation
+  // ========================================================================
+  .post(
+    "/cache/clear",
+    async ({ isAdmin, set }) => {
+      if (!isAdmin) {
+        set.status = 403;
+        return error(ErrorCodes.FORBIDDEN, "Admin access required");
+      }
+
+      const cache = getCacheService();
+      const previousSize = cache.getStats().size;
+      cache.clear();
+
+      return success({
+        message: "Cache cleared",
+        clearedEntries: previousSize,
+      });
+    },
+    {
+      detail: {
+        summary: "Clear all cache entries",
+        description:
+          "Clears all entries from the in-memory cache. Requires admin API key.",
+        tags: ["Admin"],
+      },
+    }
+  )
+
+  // ========================================================================
+  // DELETE /admin/cache/invalidate/:prefix - Invalidate Cache by Prefix
+  // Sprint 008 - AC-3.3: Cache invalidation
+  // ========================================================================
+  .delete(
+    "/cache/invalidate/:prefix",
+    async ({ isAdmin, params, set }) => {
+      if (!isAdmin) {
+        set.status = 403;
+        return error(ErrorCodes.FORBIDDEN, "Admin access required");
+      }
+
+      const cache = getCacheService();
+      const count = cache.invalidatePrefix(params.prefix);
+
+      return success({
+        message: `Invalidated ${count} cache entries`,
+        prefix: params.prefix,
+        invalidatedCount: count,
+      });
+    },
+    {
+      params: t.Object({
+        prefix: t.String(),
+      }),
+      detail: {
+        summary: "Invalidate cache entries by prefix",
+        description:
+          "Invalidates all cache entries matching the given prefix. Useful for clearing group-specific cache. Requires admin API key.",
         tags: ["Admin"],
       },
     }

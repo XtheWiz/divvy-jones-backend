@@ -5,3 +5,6 @@ export * from "./activity.service";
 export * from "./preferences.service";
 export * from "./analytics.service";
 export * from "./recurring.service";
+export * from "./comment.service";
+export * from "./reaction.service";
+export * from "./cache.service";

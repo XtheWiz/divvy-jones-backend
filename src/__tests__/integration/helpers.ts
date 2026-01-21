@@ -183,14 +183,14 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<{ accessToken: string; refreshToken: string } | null> {
-  const response = await post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
+  const response = await post<ApiResponse<{ tokens: { accessToken: string; refreshToken: string } }>>(
     app,
     "/v1/auth/login",
     { email, password }
   );
 
-  if (response.status === 200 && response.body.success && response.body.data) {
-    return response.body.data;
+  if (response.status === 200 && response.body.success && response.body.data?.tokens) {
+    return response.body.data.tokens;
   }
   return null;
 }
@@ -204,15 +204,16 @@ export async function registerUser(
   password: string,
   displayName: string
 ): Promise<{ accessToken: string; refreshToken: string; userId: string } | null> {
-  const response = await post<ApiResponse<{ accessToken: string; refreshToken: string; user: { id: string } }>>(
+  const response = await post<ApiResponse<{ tokens: { accessToken: string; refreshToken: string }; user: { id: string } }>>(
     app,
     "/v1/auth/register",
     { email, password, displayName }
   );
 
-  if (response.status === 201 && response.body.success && response.body.data) {
+  if (response.status === 201 && response.body.success && response.body.data?.tokens) {
     return {
-      ...response.body.data,
+      accessToken: response.body.data.tokens.accessToken,
+      refreshToken: response.body.data.tokens.refreshToken,
       userId: response.body.data.user.id,
     };
   }

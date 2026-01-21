@@ -1,3 +1,12 @@
+/**
+ * Balance Service
+ * Sprint 003 - Balance calculations
+ * Sprint 008 - TASK-013: Added caching support
+ *
+ * AC-3.2: Group summary data can be cached with configurable TTL
+ * AC-3.3: Cache invalidation occurs on relevant data changes
+ */
+
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import {
   db,
@@ -10,6 +19,7 @@ import {
   users,
   settlements,
 } from "../db";
+import { getCacheService, CACHE_KEYS, CACHE_TTL } from "./cache.service";
 
 // ============================================================================
 // Types
@@ -70,6 +80,44 @@ export interface IndividualBalance {
 // ============================================================================
 // Balance Calculation Functions
 // ============================================================================
+
+/**
+ * Get group balances with caching
+ * AC-3.2: Group summary data can be cached with configurable TTL
+ */
+export async function getGroupBalances(
+  groupId: string,
+  options: { skipCache?: boolean } = {}
+): Promise<GroupBalances> {
+  const cache = getCacheService();
+  const cacheKey = CACHE_KEYS.groupBalances(groupId);
+
+  // Check cache first (unless skipCache is true)
+  if (!options.skipCache) {
+    const cached = cache.get<GroupBalances>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // Calculate fresh balances
+  const balances = await calculateGroupBalances(groupId);
+
+  // Cache the result
+  cache.set(cacheKey, balances, CACHE_TTL.GROUP_BALANCES);
+
+  return balances;
+}
+
+/**
+ * Invalidate cached balances for a group
+ * AC-3.3: Cache invalidation occurs on relevant data changes
+ * Call this when expenses, settlements, or members change
+ */
+export function invalidateGroupBalancesCache(groupId: string): void {
+  const cache = getCacheService();
+  cache.invalidate(CACHE_KEYS.groupBalances(groupId));
+}
 
 /**
  * Calculate all member balances for a group

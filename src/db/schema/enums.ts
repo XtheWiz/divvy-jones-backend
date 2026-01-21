@@ -107,6 +107,7 @@ export const NOTIFICATION_TYPES = [
   "settlement_requested", "settlement_confirmed", "settlement_rejected",
   "member_joined", "member_left", "member_removed",
   "group_invite", "leave_request", "reminder",
+  "comment_added", // Sprint 008
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

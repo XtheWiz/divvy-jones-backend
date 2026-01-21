@@ -96,7 +96,7 @@ export const authMiddleware = new Elysia({ name: "auth" })
       authError: null,
     };
   })
-  .as("global");
+  .as("scoped");
 
 /**
  * Guard that ensures authentication is valid
@@ -110,7 +110,7 @@ export const requireAuth = new Elysia({ name: "requireAuth" })
       return authError;
     }
   })
-  .as("global");
+  .as("scoped");
 
 // ============================================================================
 // JWT Token Generation

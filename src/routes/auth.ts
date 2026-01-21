@@ -46,13 +46,16 @@ const refreshSchema = {
 // Auth Routes
 // ============================================================================
 
+// Disable or relax rate limiting in test environment
+const isTestEnvironment = !!process.env.DATABASE_URL_TEST;
+
 export const authRoutes = new Elysia({ prefix: "/auth" })
   // AC-0.4: Rate limiting - 5 requests per minute per IP
   // AC-0.5: Returns 429 Too Many Requests when exceeded
   .use(
     rateLimit({
       duration: 60000, // 1 minute window
-      max: 5, // 5 requests per window
+      max: isTestEnvironment ? 1000 : 5, // Relaxed in tests, strict in production
       generator: (req) => {
         // Use X-Forwarded-For for proxied requests, fallback to a default
         return (

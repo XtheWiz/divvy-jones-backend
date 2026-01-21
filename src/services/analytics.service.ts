@@ -1,6 +1,7 @@
 /**
  * Analytics Service
  * Sprint 007 - TASK-007, TASK-008, TASK-009
+ * Sprint 008 - TASK-013: Added caching support
  *
  * Service for generating spending analytics for groups.
  *
@@ -14,6 +15,9 @@
  * AC-2.8: Categories sorted by total amount descending
  * AC-2.9: GET /groups/:groupId/analytics/trends returns spending trends
  * AC-2.10: Trends show spending over time for the requested period
+ *
+ * AC-3.2: Group summary data can be cached with configurable TTL
+ * AC-3.3: Cache invalidation occurs on relevant data changes
  */
 
 import {
@@ -27,6 +31,7 @@ import {
   groups,
 } from "../db";
 import { eq, and, isNull, gte, lte, sql, desc, asc } from "drizzle-orm";
+import { getCacheService, CACHE_KEYS, CACHE_TTL } from "./cache.service";
 
 // ============================================================================
 // Types
@@ -104,17 +109,71 @@ export interface SpendingTrends {
 }
 
 // ============================================================================
+// Cache Helpers
+// ============================================================================
+
+/**
+ * Generate date range string for cache key
+ */
+function getDateRangeKey(dateFrom?: Date, dateTo?: Date): string | undefined {
+  if (!dateFrom && !dateTo) return undefined;
+  const from = dateFrom?.toISOString().split("T")[0] || "start";
+  const to = dateTo?.toISOString().split("T")[0] || "end";
+  return `${from}_${to}`;
+}
+
+/**
+ * Invalidate all analytics cache for a group
+ * AC-3.3: Cache invalidation occurs on relevant data changes
+ */
+export function invalidateAnalyticsCache(groupId: string): void {
+  const cache = getCacheService();
+  cache.invalidatePrefix(`summary:${groupId}`);
+  cache.invalidatePrefix(`categories:${groupId}`);
+  cache.invalidatePrefix(`trends:${groupId}`);
+}
+
+// ============================================================================
 // Summary Analytics (AC-2.1 to AC-2.5)
 // ============================================================================
 
 /**
- * Get spending summary for a group
+ * Get spending summary for a group (with caching)
  * AC-2.1: Returns spending summary
  * AC-2.2: Includes total, average, count
  * AC-2.3: Includes per-member breakdown
  * AC-2.4: Supports date range filtering
+ * AC-3.2: Cached with configurable TTL
  */
 export async function getSpendingSummary(
+  options: AnalyticsOptions & { skipCache?: boolean }
+): Promise<SpendingSummary> {
+  const { groupId, dateFrom, dateTo, skipCache } = options;
+  const cache = getCacheService();
+  const dateRangeKey = getDateRangeKey(dateFrom, dateTo);
+  const cacheKey = CACHE_KEYS.groupSummary(groupId, dateRangeKey);
+
+  // Check cache first (unless skipCache is true)
+  if (!skipCache) {
+    const cached = cache.get<SpendingSummary>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // Calculate fresh summary
+  const summary = await calculateSpendingSummary(options);
+
+  // Cache the result
+  cache.set(cacheKey, summary, CACHE_TTL.GROUP_SUMMARY);
+
+  return summary;
+}
+
+/**
+ * Calculate spending summary (uncached)
+ */
+async function calculateSpendingSummary(
   options: AnalyticsOptions
 ): Promise<SpendingSummary> {
   const { groupId, dateFrom, dateTo } = options;
@@ -265,12 +324,41 @@ async function getMemberSpendingBreakdown(
 // ============================================================================
 
 /**
- * Get category breakdown for a group
+ * Get category breakdown for a group (with caching)
  * AC-2.6: Returns category breakdown
  * AC-2.7: Shows amount and percentage per category
  * AC-2.8: Sorted by total amount descending
+ * AC-3.2: Cached with configurable TTL
  */
 export async function getCategoryAnalytics(
+  options: AnalyticsOptions & { skipCache?: boolean }
+): Promise<CategoryAnalytics> {
+  const { groupId, dateFrom, dateTo, skipCache } = options;
+  const cache = getCacheService();
+  const dateRangeKey = getDateRangeKey(dateFrom, dateTo);
+  const cacheKey = CACHE_KEYS.categoryAnalytics(groupId, dateRangeKey);
+
+  // Check cache first
+  if (!skipCache) {
+    const cached = cache.get<CategoryAnalytics>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // Calculate fresh data
+  const analytics = await calculateCategoryAnalytics(options);
+
+  // Cache the result
+  cache.set(cacheKey, analytics, CACHE_TTL.CATEGORY_ANALYTICS);
+
+  return analytics;
+}
+
+/**
+ * Calculate category analytics (uncached)
+ */
+async function calculateCategoryAnalytics(
   options: AnalyticsOptions
 ): Promise<CategoryAnalytics> {
   const { groupId, dateFrom, dateTo } = options;
@@ -344,11 +432,40 @@ export async function getCategoryAnalytics(
 // ============================================================================
 
 /**
- * Get spending trends over time
+ * Get spending trends over time (with caching)
  * AC-2.9: Returns spending trends
  * AC-2.10: Shows spending over time for requested period
+ * AC-3.2: Cached with configurable TTL
  */
 export async function getSpendingTrends(
+  options: AnalyticsOptions & { skipCache?: boolean }
+): Promise<SpendingTrends> {
+  const { groupId, dateFrom, dateTo, period = "monthly", skipCache } = options;
+  const cache = getCacheService();
+  const dateRangeKey = getDateRangeKey(dateFrom, dateTo);
+  const cacheKey = CACHE_KEYS.spendingTrends(groupId, period, dateRangeKey);
+
+  // Check cache first
+  if (!skipCache) {
+    const cached = cache.get<SpendingTrends>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // Calculate fresh data
+  const trends = await calculateSpendingTrends(options);
+
+  // Cache the result
+  cache.set(cacheKey, trends, CACHE_TTL.GROUP_SUMMARY);
+
+  return trends;
+}
+
+/**
+ * Calculate spending trends (uncached)
+ */
+async function calculateSpendingTrends(
   options: AnalyticsOptions
 ): Promise<SpendingTrends> {
   const { groupId, dateFrom, dateTo, period = "monthly" } = options;

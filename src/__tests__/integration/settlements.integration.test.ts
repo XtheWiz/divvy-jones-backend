@@ -153,7 +153,7 @@ describe("POST /v1/groups/:groupId/settlements", () => {
     expect(settlement.note).toBe("Dinner split");
   });
 
-  it("should return 400 for invalid amount (negative)", async () => {
+  it("should return 422 for invalid amount (negative) - schema validation", async () => {
     // Arrange
     const { owner, member, group } = await createGroupWithMembers();
 
@@ -169,9 +169,10 @@ describe("POST /v1/groups/:groupId/settlements", () => {
       { headers: authHeader(owner.tokens.accessToken) }
     );
 
-    // Assert
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
+    // Assert - TypeBox minimum: 0.01 validation returns 422 with validation error format
+    expect(response.status).toBe(422);
+    // TypeBox returns { type: "validation", ... } not { success: false, ... }
+    expect((response.body as any).type).toBe("validation");
   });
 
   it("should return 400 when payer equals payee", async () => {

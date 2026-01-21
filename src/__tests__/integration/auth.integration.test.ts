@@ -122,10 +122,10 @@ describe("POST /v1/auth/register", () => {
     expect(response.body.error?.message).toContain("already registered");
   });
 
-  it("should return 400 for weak password", async () => {
+  it("should return 422 for weak password (schema validation)", async () => {
     // Arrange
     const email = testEmail();
-    const weakPassword = "weak"; // Too short, no special chars
+    const weakPassword = "weak"; // Too short - fails TypeBox minLength: 8
 
     // Act
     const response = await post<ApiResponse>(
@@ -138,12 +138,13 @@ describe("POST /v1/auth/register", () => {
       }
     );
 
-    // Assert
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
+    // Assert - TypeBox schema validation returns 422 with validation error format
+    expect(response.status).toBe(422);
+    // TypeBox returns { type: "validation", ... } not { success: false, ... }
+    expect((response.body as any).type).toBe("validation");
   });
 
-  it("should return 400 for invalid email format", async () => {
+  it("should return 422 for invalid email format (schema validation)", async () => {
     // Arrange
     const invalidEmail = "not-an-email";
 
@@ -158,9 +159,10 @@ describe("POST /v1/auth/register", () => {
       }
     );
 
-    // Assert
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
+    // Assert - TypeBox format: "email" validation returns 422 with validation error format
+    expect(response.status).toBe(422);
+    // TypeBox returns { type: "validation", ... } not { success: false, ... }
+    expect((response.body as any).type).toBe("validation");
   });
 });
 

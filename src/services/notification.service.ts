@@ -348,6 +348,55 @@ export async function notifySettlementRejected(
 }
 
 // ============================================================================
+// Comment Notification Helpers
+// Sprint 008 - TASK-007
+// AC-1.9: Adding a comment creates a notification for expense participants
+// AC-1.10: Comment notifications include comment preview text
+// ============================================================================
+
+/**
+ * Create notification for new comment on expense
+ * AC-1.9: Adding a comment creates a notification for expense participants
+ * AC-1.10: Comment notifications include comment preview text
+ */
+export async function notifyCommentAdded(
+  participantUserId: string,
+  authorDisplayName: string,
+  expenseTitle: string,
+  commentPreview: string,
+  expenseId: string,
+  groupName: string
+): Promise<Notification | null> {
+  // Respect user preferences (use group_activity for comments)
+  const wantsNotification = await shouldNotify(participantUserId, "group_activity");
+  if (!wantsNotification) {
+    return null;
+  }
+
+  // Truncate comment preview if too long (AC-1.10)
+  const maxPreviewLength = 100;
+  const preview =
+    commentPreview.length > maxPreviewLength
+      ? commentPreview.slice(0, maxPreviewLength) + "..."
+      : commentPreview;
+
+  return createNotification({
+    userId: participantUserId,
+    type: "comment_added",
+    title: `${authorDisplayName} commented on "${expenseTitle}"`,
+    body: preview,
+    data: {
+      expenseId,
+      groupName,
+      authorDisplayName,
+      expenseTitle,
+    },
+    referenceId: expenseId,
+    referenceType: "expense",
+  });
+}
+
+// ============================================================================
 // Email Notification Helpers
 // Sprint 006 - TASK-008
 // AC-1.11: Emails respect user preferences

@@ -15,6 +15,8 @@ import { exportRoutes } from "./export";
 import { analyticsRoutes } from "./analytics";
 import { recurringExpenseRoutes } from "./recurring";
 import { adminRoutes } from "./admin";
+import { commentRoutes } from "./comments";
+import { expenseReactionRoutes, settlementReactionRoutes } from "./reactions";
 
 export const routes = new Elysia({ prefix: "/v1" })
   .get("/", () => ({
@@ -37,4 +39,7 @@ export const routes = new Elysia({ prefix: "/v1" })
   .use(exportRoutes)
   .use(analyticsRoutes)
   .use(recurringExpenseRoutes)
-  .use(adminRoutes);
+  .use(adminRoutes)
+  .use(commentRoutes)
+  .use(expenseReactionRoutes)
+  .use(settlementReactionRoutes);

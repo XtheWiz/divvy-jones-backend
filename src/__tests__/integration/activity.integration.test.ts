@@ -86,24 +86,19 @@ async function createGroupWithMembers() {
 async function createExpenseViaApi(
   groupId: string,
   token: string,
+  paidByUserId: string,
   options: { name?: string; amount?: number } = {}
 ) {
   const response = await post<ApiResponse<any>>(
     app,
     `/v1/groups/${groupId}/expenses`,
     {
-      name: options.name || "Test Expense",
-      items: [
-        {
-          name: options.name || "Test Item",
-          unitValue: options.amount || 100,
-          quantity: 1,
-          splits: [], // Will be split equally
-        },
-      ],
-      payers: [{ amount: options.amount || 100 }],
+      title: options.name || "Test Expense",
+      amount: options.amount || 100,
+      currency: "USD",
+      paidBy: paidByUserId,
       category: "food",
-      expenseDate: new Date().toISOString(),
+      date: new Date().toISOString(),
     },
     { headers: authHeader(token) }
   );
@@ -148,8 +143,8 @@ describe("GET /v1/groups/:groupId/activity", () => {
     const { owner, group } = await createGroupWithMembers();
 
     // Create some expenses to generate activity
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Lunch", amount: 50 });
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Dinner", amount: 75 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Lunch", amount: 50 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Dinner", amount: 75 });
 
     // Act
     const response = await get<ApiResponse<ActivityListResponse>>(
@@ -172,9 +167,9 @@ describe("GET /v1/groups/:groupId/activity", () => {
     const { owner, group } = await createGroupWithMembers();
 
     // Create expenses with some delay between them
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "First", amount: 10 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "First", amount: 10 });
     await new Promise((resolve) => setTimeout(resolve, 50)); // Small delay
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Second", amount: 20 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Second", amount: 20 });
 
     // Act
     const response = await get<ApiResponse<ActivityListResponse>>(
@@ -198,7 +193,7 @@ describe("GET /v1/groups/:groupId/activity", () => {
   it("should include actor, action, target, timestamp in each activity (AC-2.13)", async () => {
     // Arrange
     const { owner, group } = await createGroupWithMembers();
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Lunch", amount: 50 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Lunch", amount: 50 });
 
     // Act
     const response = await get<ApiResponse<ActivityListResponse>>(
@@ -225,7 +220,7 @@ describe("GET /v1/groups/:groupId/activity", () => {
     const { owner, member, group } = await createGroupWithMembers();
 
     // Create expense (expense type)
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Lunch", amount: 50 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Lunch", amount: 50 });
 
     // Create settlement (settlement type)
     await post<ApiResponse<any>>(
@@ -260,7 +255,7 @@ describe("GET /v1/groups/:groupId/activity", () => {
   it("should filter activity by date range (AC-2.15)", async () => {
     // Arrange
     const { owner, group } = await createGroupWithMembers();
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, { name: "Lunch", amount: 50 });
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, { name: "Lunch", amount: 50 });
 
     const now = new Date();
     const from = new Date(now.getTime() - 60000).toISOString(); // 1 minute ago
@@ -294,7 +289,7 @@ describe("GET /v1/groups/:groupId/activity", () => {
 
     // Create 5 expenses
     for (let i = 0; i < 5; i++) {
-      await createExpenseViaApi(group.id, owner.tokens.accessToken, {
+      await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, {
         name: `Expense ${i}`,
         amount: 10 * (i + 1),
       });
@@ -394,6 +389,7 @@ describe("Activity Recording - Expense Actions", () => {
     const expenseResponse = await createExpenseViaApi(
       group.id,
       owner.tokens.accessToken,
+      owner.id,
       { name: "Lunch", amount: 50 }
     );
     expect(expenseResponse.status).toBe(201);
@@ -426,6 +422,7 @@ describe("Activity Recording - Expense Actions", () => {
     const expenseResponse = await createExpenseViaApi(
       group.id,
       owner.tokens.accessToken,
+      owner.id,
       { name: "Lunch", amount: 50 }
     );
     const expenseId = expenseResponse.body.data.id;
@@ -462,6 +459,7 @@ describe("Activity Recording - Expense Actions", () => {
     const expenseResponse = await createExpenseViaApi(
       group.id,
       owner.tokens.accessToken,
+      owner.id,
       { name: "Lunch", amount: 50 }
     );
     const expenseId = expenseResponse.body.data.id;
@@ -618,7 +616,7 @@ describe("Activity Summary Format", () => {
   it("should format expense creation summary correctly", async () => {
     // Arrange
     const { owner, group } = await createGroupWithMembers();
-    await createExpenseViaApi(group.id, owner.tokens.accessToken, {
+    await createExpenseViaApi(group.id, owner.tokens.accessToken, owner.id, {
       name: "Team Lunch",
       amount: 100,
     });

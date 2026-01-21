@@ -167,13 +167,16 @@ export async function deleteTestGroup(groupId: string) {
 
 /**
  * Setup function to run before all tests in a file
+ * Note: We don't cleanup here to avoid race conditions when test files run in parallel.
+ * Each test creates fresh data with unique IDs, and cleanup happens in afterAllTests().
  */
 export async function beforeAllTests() {
   // Ensure test database is connected
   getTestDb();
 
-  // Clean any stale test data
-  await cleanupTestData();
+  // Note: Removed cleanupTestData() call to prevent race conditions
+  // when multiple test files run in parallel. Tests create fresh data
+  // with unique IDs, so stale data doesn't affect them.
 }
 
 /**
