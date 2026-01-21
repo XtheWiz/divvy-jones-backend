@@ -526,16 +526,18 @@ async function calculateSpendingTrends(
   }
 
   // Get spending by period
+  // Note: periodFormat must be a literal string in SQL, not a bound parameter
+  // Since periodFormat is derived from a fixed enum, this is safe from SQL injection
   const trendData = await db
     .select({
-      period: sql<string>`TO_CHAR(${expenses.expenseDate}, ${periodFormat})`,
+      period: sql<string>`TO_CHAR(${expenses.expenseDate}, ${sql.raw(`'${periodFormat}'`)})`,
       totalAmount: sql<number>`COALESCE(SUM(${expenses.subtotal}), 0)`,
       expenseCount: sql<number>`COUNT(*)`,
     })
     .from(expenses)
     .where(and(...conditions))
-    .groupBy(sql`TO_CHAR(${expenses.expenseDate}, ${periodFormat})`)
-    .orderBy(asc(sql`TO_CHAR(${expenses.expenseDate}, ${periodFormat})`));
+    .groupBy(sql`TO_CHAR(${expenses.expenseDate}, ${sql.raw(`'${periodFormat}'`)})`)
+    .orderBy(asc(sql`TO_CHAR(${expenses.expenseDate}, ${sql.raw(`'${periodFormat}'`)})`));
 
   // Convert to trend data points with proper dates
   const trends: TrendDataPoint[] = trendData.map((t) => {

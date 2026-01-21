@@ -72,7 +72,7 @@ export const analyticsRoutes = new Elysia({ prefix: "/groups/:groupId/analytics"
       }
 
       // Only group members can view analytics
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
@@ -140,7 +140,7 @@ export const analyticsRoutes = new Elysia({ prefix: "/groups/:groupId/analytics"
       }
 
       // Only group members can view analytics
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");
@@ -208,7 +208,7 @@ export const analyticsRoutes = new Elysia({ prefix: "/groups/:groupId/analytics"
       }
 
       // Only group members can view analytics
-      const isMember = await isMemberOfGroup(auth.userId, groupId);
+      const { isMember } = await isMemberOfGroup(auth.userId, groupId);
       if (!isMember) {
         set.status = 403;
         return error(ErrorCodes.FORBIDDEN, "You are not a member of this group");

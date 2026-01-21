@@ -1,7 +1,7 @@
 # E2E Integration Test Report
 
 **Project:** Divvy-Jones
-**Phase:** Phase 1 & 2 - MVP Critical Path + Email Verification & OAuth
+**Phase:** Phase 1-3 - MVP Critical Path + Email/OAuth + Recurring & Analytics
 **Date:** 2026-01-21
 **Test Framework:** Bun Test
 
@@ -9,16 +9,16 @@
 
 ## Executive Summary
 
-Phase 1 and Phase 2 E2E integration testing has been successfully implemented, covering the critical path and authentication enhancements of the Divvy-Jones expense splitting application. A total of **211 tests** exist across **15 test files**, with **210 tests passing** and **1 test skipped** due to a known API limitation.
+Phase 1, 2, and 3 E2E integration testing has been successfully implemented, covering the critical path, authentication enhancements, recurring expenses, and analytics of the Divvy-Jones expense splitting application. A total of **267 tests** exist across **17 test files**, with **266 tests passing** and **1 test skipped** due to a known API limitation.
 
 | Metric | Value |
 |--------|-------|
-| Total Test Files | 15 |
-| Total Tests | 211 |
-| Passing | 210 |
+| Total Test Files | 17 |
+| Total Tests | 267 |
+| Passing | 266 |
 | Failing | 0 |
 | Skipped | 1 |
-| Pass Rate | 99.5% |
+| Pass Rate | 99.6% |
 
 ---
 
@@ -372,21 +372,102 @@ if (existing.length > 0) {
 
 ---
 
+## Phase 3 Test Coverage
+
+### 10. Recurring Expenses (`recurring-expenses.integration.test.ts`)
+
+**Endpoints:** `POST/GET/PUT/DELETE /v1/groups/:groupId/recurring-expenses`
+**Tests:** 30 | **Passing:** 30 | **Status:** ✅ Complete
+
+| Test Case | Type | Status |
+|-----------|------|--------|
+| Create recurring expense with valid data (AC-3.4) | Success | ✅ Pass |
+| Create recurring expense with all optional fields | Success | ✅ Pass |
+| Create daily recurring expense | Success | ✅ Pass |
+| Create weekly recurring expense with day of week | Success | ✅ Pass |
+| Create biweekly recurring expense | Success | ✅ Pass |
+| Create monthly recurring expense with day of month | Success | ✅ Pass |
+| Create yearly recurring expense with month of year | Success | ✅ Pass |
+| Reject invalid frequency | Validation | ✅ Pass |
+| Reject payers sum mismatch | Validation | ✅ Pass |
+| Reject invalid start date format | Validation | ✅ Pass |
+| Reject invalid end date format | Validation | ✅ Pass |
+| Require authentication | Auth | ✅ Pass |
+| Reject non-member access (403) | Permission | ✅ Pass |
+| Reject non-existent group (404) | Error | ✅ Pass |
+| List recurring expenses (AC-3.5) | Success | ✅ Pass |
+| Return empty list for no recurring expenses | Success | ✅ Pass |
+| Require authentication for list | Auth | ✅ Pass |
+| Reject non-member list access (403) | Permission | ✅ Pass |
+| Get single recurring expense (AC-3.6) | Success | ✅ Pass |
+| Get expense with payers and splits | Success | ✅ Pass |
+| Reject non-existent recurring expense (404) | Error | ✅ Pass |
+| Reject non-member get access (403) | Permission | ✅ Pass |
+| Update recurring expense (AC-3.7) | Success | ✅ Pass |
+| Update multiple fields | Success | ✅ Pass |
+| Reject non-member update (403) | Permission | ✅ Pass |
+| Reject non-existent update (404) | Error | ✅ Pass |
+| Deactivate recurring expense (AC-3.8) | Success | ✅ Pass |
+| Reject non-member deactivate (403) | Permission | ✅ Pass |
+| Reject non-existent deactivate (404) | Error | ✅ Pass |
+| Equal split mode creates correct splits | Business | ✅ Pass |
+
+**Coverage:** Full CRUD for recurring expense rules, frequency validation, split modes, date handling
+
+---
+
+### 11. Analytics (`analytics.integration.test.ts`)
+
+**Endpoints:** `GET /v1/groups/:groupId/analytics/summary`, `/categories`, `/trends`
+**Tests:** 26 | **Passing:** 26 | **Status:** ✅ Complete
+
+| Test Case | Type | Status |
+|-----------|------|--------|
+| Get spending summary (AC-2.1) | Success | ✅ Pass |
+| Summary includes total, average, count (AC-2.2) | Success | ✅ Pass |
+| Summary includes per-member breakdown (AC-2.3) | Success | ✅ Pass |
+| Summary supports date range filtering (AC-2.4) | Success | ✅ Pass |
+| Return empty summary for no expenses | Success | ✅ Pass |
+| Require authentication for summary | Auth | ✅ Pass |
+| Reject non-member summary access (403) | Permission | ✅ Pass |
+| Reject invalid startDate format | Validation | ✅ Pass |
+| Reject invalid endDate format | Validation | ✅ Pass |
+| Reject non-existent group (404) | Error | ✅ Pass |
+| Get category breakdown (AC-2.6) | Success | ✅ Pass |
+| Categories include amount and percentage (AC-2.7) | Success | ✅ Pass |
+| Categories sorted by total descending (AC-2.8) | Success | ✅ Pass |
+| Category breakdown supports date filter | Success | ✅ Pass |
+| Return empty categories for no expenses | Success | ✅ Pass |
+| Require authentication for categories | Auth | ✅ Pass |
+| Reject non-member categories access (403) | Permission | ✅ Pass |
+| Get spending trends (AC-2.9) | Success | ✅ Pass |
+| Trends show spending over time (AC-2.10) | Success | ✅ Pass |
+| Trends support daily period (AC-2.5) | Success | ✅ Pass |
+| Trends support weekly period | Success | ✅ Pass |
+| Trends support monthly period (default) | Success | ✅ Pass |
+| Trends support date range filter | Success | ✅ Pass |
+| Return empty trends for no expenses | Success | ✅ Pass |
+| Require authentication for trends | Auth | ✅ Pass |
+| Reject non-member trends access (403) | Permission | ✅ Pass |
+
+**Coverage:** Spending summary, category analytics, time-series trends, period grouping, date filtering
+
+---
+
 ## Future Phases
 
-This Phase 1 + 2 implementation covers ~211 tests of the planned ~335 total tests. Future phases should add:
+This Phase 1-3 implementation covers ~267 tests of the planned ~335 total tests. Future phases should add:
 
 | Phase | Focus | Estimated Tests |
 |-------|-------|-----------------|
-| Phase 3 | Recurring expenses, Categories | ~50 tests |
-| Phase 4 | Attachments, Export, Activity logs (partial done) | ~40 tests |
-| Phase 5 | Edge cases, Performance, Security | ~85 tests |
+| Phase 4 | Attachments, Export, Activity logs | ~40 tests |
+| Phase 5 | Edge cases, Performance, Security | ~30 tests |
 
 ---
 
 ## Conclusion
 
-Phase 1 and Phase 2 E2E testing implementation is **complete and successful**. The test suite provides comprehensive coverage of the critical path and authentication enhancements:
+Phase 1, 2, and 3 E2E testing implementation is **complete and successful**. The test suite provides comprehensive coverage of the critical path, authentication enhancements, recurring expenses, and analytics:
 
 - **Authentication:** Registration, login, token management
 - **Email Verification:** Token generation, verification flow, single-use enforcement
@@ -394,10 +475,12 @@ Phase 1 and Phase 2 E2E testing implementation is **complete and successful**. T
 - **Groups:** CRUD operations, membership management
 - **Expenses:** Full expense lifecycle with splits
 - **Settlements:** Complete workflow from creation to confirmation/rejection
+- **Recurring Expenses:** Rule creation, frequency handling, split modes, deactivation
+- **Analytics:** Spending summary, category breakdown, time-series trends
 
 All tests follow consistent patterns using the established test infrastructure, making them maintainable and easy to extend for future phases.
 
-**Progress:** 211 tests implemented (63% of planned ~335 total)
+**Progress:** 267 tests implemented (80% of planned ~335 total)
 
 ---
 
