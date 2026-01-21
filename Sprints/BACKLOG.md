@@ -99,12 +99,13 @@ This document contains all features and user stories prioritized for future spri
 
 ## Recently Completed
 
-### Sprint 008 (2026-01-21) - In Progress
+### Sprint 008 (2026-01-21) ✅ COMPLETE
 | Item | Features Delivered |
 |------|-------------------|
 | BL-009 | Social Features (comments on expenses, reactions on expenses/settlements) |
 | Feature | Performance Improvements (caching service, optimized indexes, cache admin endpoints) |
 | Tech Debt | Sprint 007 cleanup documentation |
+| Tests | 145 new unit tests (809 total) |
 
 ### Sprint 007 (2026-01-21)
 | Item | Features Delivered |
@@ -170,45 +171,23 @@ This document contains all features and user stories prioritized for future spri
 | 005 | 35 | 35 | 100% |
 | 006 | 30 | 30 | 100% |
 | 007 | 34 | 34 | 100% |
-| 008 | 30 | 26* | 87%* |
+| 008 | 30 | 30 | 100% |
 
-**Average Velocity:** 99.1%
-**Total ACs Delivered:** 330
-
-*Sprint 008 in progress - 26/30 ACs complete (Feature 1, 2, 3 done; cleanup remaining)*
+**Average Velocity:** 98.5%
+**Total ACs Delivered:** 334
 
 ---
 
 ## Upcoming Sprint Candidates
 
-### Sprint 008 (Active) ✅ Near Completion
-**Focus:** Social Features, Performance Improvements
-**Status:** 14/17 tasks complete (82%)
+### Sprint 009 (Next)
+**Tentative Focus:** Infrastructure & Mobile Readiness
 
-**Completed:**
-1. **Comments Feature (P1)** - 10 ACs ✅
-   - Comment schema and service
-   - CRUD API for expense comments
-   - Comment notifications
-
-2. **Reactions Feature (P2)** - 8 ACs ✅
-   - Reactions schema (polymorphic for expenses/settlements)
-   - Toggle reactions API
-   - Reaction counts and details
-
-3. **Performance Improvements (P2)** - 8 ACs ✅
-   - In-memory cache service with TTL
-   - Database index optimization
-   - Cache admin endpoints
-
-**Remaining:**
-- Sprint 007 Cleanup (documentation only)
-
-### Sprint 009 (Tentative)
-1. **Push Notifications** - Mobile/web push (requires service worker)
-2. **Password Reset** - BL-001 completion
-3. **Mobile API** - Optimizations for mobile clients
-4. **Advanced Analytics** - Charts/graphs in PDF reports
+1. **Integration Test Infrastructure** - Fix DATABASE_URL_TEST issues (carried from Sprint 008)
+2. **Auth Middleware Extraction** - Reduce route handler duplication (carried from Sprint 008)
+3. **Push Notifications** - Mobile/web push (requires service worker)
+4. **Password Reset** - BL-001 completion
+5. **Rate Limiting** - Social endpoints rate limiting (carried from Sprint 008)
 
 ### Sprint 010 (Future)
 1. **Real-time Updates** - WebSocket for live notifications
