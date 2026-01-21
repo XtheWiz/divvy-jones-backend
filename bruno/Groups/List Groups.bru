@@ -1,0 +1,30 @@
+meta {
+  name: List Groups
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/groups
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # List Groups
+
+  Get all groups the authenticated user belongs to.
+
+  ## Response
+  Returns array of groups with:
+  - `id`: Group ID
+  - `name`: Group name
+  - `description`: Group description
+  - `role`: User's role (owner/admin/member)
+  - `memberCount`: Number of members
+  - `createdAt`: Creation timestamp
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Get Expense
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/expenses/{{expenseId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Expense Details
+
+  Get detailed information about a specific expense.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+  - `expenseId`: UUID of the expense
+
+  ## Response
+  Returns expense with all splits and payer information.
+}

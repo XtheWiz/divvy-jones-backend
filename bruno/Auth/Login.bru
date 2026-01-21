@@ -1,0 +1,40 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{testEmail}}",
+    "password": "{{testPassword}}"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data) {
+    bru.setEnvVar("accessToken", res.body.data.tokens.accessToken);
+    bru.setEnvVar("refreshToken", res.body.data.tokens.refreshToken);
+  }
+}
+
+docs {
+  # Login
+
+  Authenticate with email and password to receive access and refresh tokens.
+
+  ## Request Body
+  - `email` (required): Registered email address
+  - `password` (required): Account password
+
+  ## Response
+  Returns user details and authentication tokens.
+  - Access token expires in 15 minutes
+  - Refresh token expires in 30 days
+}

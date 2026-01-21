@@ -50,6 +50,12 @@ const registerSchema = {
     password: t.String({ minLength: 8 }),
     displayName: t.String({ minLength: 1, maxLength: 100 }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Register a new user",
+    description: "Create a new user account with email, password, and display name. A verification email will be sent to confirm the email address.",
+    security: [],
+  },
 };
 
 const loginSchema = {
@@ -57,12 +63,24 @@ const loginSchema = {
     email: t.String({ format: "email" }),
     password: t.String({ minLength: 1 }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Login with email and password",
+    description: "Authenticate with email and password to receive access and refresh tokens.",
+    security: [],
+  },
 };
 
 const refreshSchema = {
   body: t.Object({
     refreshToken: t.String({ minLength: 1 }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Refresh access token",
+    description: "Exchange a valid refresh token for new access and refresh tokens. Refresh tokens are single-use and rotated on each use.",
+    security: [],
+  },
 };
 
 // Sprint 009 - Password Reset Schemas
@@ -70,6 +88,12 @@ const forgotPasswordSchema = {
   body: t.Object({
     email: t.String({ format: "email" }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Request password reset",
+    description: "Send a password reset email to the specified address. Always returns success to prevent email enumeration.",
+    security: [],
+  },
 };
 
 const resetPasswordSchema = {
@@ -78,6 +102,12 @@ const resetPasswordSchema = {
     token: t.String({ minLength: 1 }),
     newPassword: t.String({ minLength: 8 }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Reset password with token",
+    description: "Complete password reset using the token from the reset email. Token is single-use and expires after 1 hour.",
+    security: [],
+  },
 };
 
 // Sprint 010 - Email Verification Schemas
@@ -85,12 +115,24 @@ const verifyEmailSchema = {
   query: t.Object({
     token: t.String({ minLength: 1 }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Verify email address",
+    description: "Verify email address using the token from the verification email. Token expires after 24 hours.",
+    security: [],
+  },
 };
 
 const resendVerificationSchema = {
   body: t.Object({
     email: t.String({ format: "email" }),
   }),
+  detail: {
+    tags: ["Auth"],
+    summary: "Resend verification email",
+    description: "Send a new verification email. Always returns success to prevent email enumeration.",
+    security: [],
+  },
 };
 
 // ============================================================================
@@ -577,6 +619,13 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const authUrl = getGoogleAuthUrl(state);
     set.redirect = authUrl;
     return redirect(authUrl);
+  }, {
+    detail: {
+      tags: ["Auth"],
+      summary: "Initiate Google OAuth login",
+      description: "Redirects to Google OAuth consent screen. After authorization, Google redirects back to the callback URL.",
+      security: [],
+    },
   })
 
   // ========================================================================
@@ -660,5 +709,11 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         state: t.Optional(t.String()),
         error: t.Optional(t.String()),
       }),
+      detail: {
+        tags: ["Auth"],
+        summary: "Google OAuth callback",
+        description: "Handles the OAuth callback from Google. Creates or links the user account and returns authentication tokens.",
+        security: [],
+      },
     }
   );

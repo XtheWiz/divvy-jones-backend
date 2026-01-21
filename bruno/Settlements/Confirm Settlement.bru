@@ -1,0 +1,28 @@
+meta {
+  name: Confirm Settlement
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/groups/{{groupId}}/settlements/{{settlementId}}/confirm
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Confirm Settlement
+
+  Confirm a pending settlement. Only the payee can confirm.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+  - `settlementId`: UUID of the settlement
+
+  ## Response
+  Returns confirmed settlement. Balances are updated after confirmation.
+}

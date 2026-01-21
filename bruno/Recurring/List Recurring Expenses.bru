@@ -1,0 +1,27 @@
+meta {
+  name: List Recurring Expenses
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/recurring-expenses
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # List Recurring Expenses
+
+  Get all recurring expense rules for a group.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Response
+  Returns array of recurring expense rules with their schedules.
+}

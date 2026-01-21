@@ -1,0 +1,31 @@
+meta {
+  name: Get Profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Current User Profile
+
+  Get the authenticated user's profile information.
+
+  ## Response
+  Returns:
+  - `id`: User ID
+  - `email`: Email address
+  - `displayName`: Display name
+  - `emailVerified`: Email verification status
+  - `primaryAuthProvider`: "email" or "google"
+  - `hasPassword`: Whether user has a password set
+  - `linkedProviders`: Array of linked OAuth providers
+}

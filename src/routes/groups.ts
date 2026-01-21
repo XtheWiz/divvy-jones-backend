@@ -40,12 +40,22 @@ const createGroupSchema = {
     description: t.Optional(t.String({ maxLength: 500 })),
     defaultCurrencyCode: t.Optional(t.String({ minLength: 3, maxLength: 3 })),
   }),
+  detail: {
+    tags: ["Groups"],
+    summary: "Create a new group",
+    description: "Create a new expense group. The creator automatically becomes the owner. A unique 8-character join code is generated.",
+  },
 };
 
 const joinGroupSchema = {
   body: t.Object({
     joinCode: t.String({ minLength: 1 }),
   }),
+  detail: {
+    tags: ["Groups"],
+    summary: "Join a group with code",
+    description: "Join an existing group using its join code. New members are assigned the 'member' role.",
+  },
 };
 
 const updateGroupSchema = {
@@ -57,6 +67,11 @@ const updateGroupSchema = {
   params: t.Object({
     groupId: t.String(),
   }),
+  detail: {
+    tags: ["Groups"],
+    summary: "Update group settings",
+    description: "Update group name, description, or default currency. Only owners and admins can modify group settings.",
+  },
 };
 
 const leaveGroupSchema = {
@@ -68,6 +83,11 @@ const leaveGroupSchema = {
   params: t.Object({
     groupId: t.String(),
   }),
+  detail: {
+    tags: ["Groups"],
+    summary: "Leave a group",
+    description: "Leave the specified group. Owners must transfer ownership before leaving if they are the only owner. Users with unsettled balances receive a warning but can still leave.",
+  },
 };
 
 // ============================================================================
@@ -205,6 +225,12 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
         createdAt: g.createdAt,
       }))
     );
+  }, {
+    detail: {
+      tags: ["Groups"],
+      summary: "List user's groups",
+      description: "Get all groups the authenticated user belongs to, sorted by most recent activity.",
+    },
   })
 
   // ========================================================================
@@ -252,6 +278,11 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
       params: t.Object({
         groupId: t.String(),
       }),
+      detail: {
+        tags: ["Groups"],
+        summary: "Get group details",
+        description: "Get detailed information about a specific group including join code. Only accessible to group members.",
+      },
     }
   )
 
@@ -300,6 +331,11 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
       params: t.Object({
         groupId: t.String(),
       }),
+      detail: {
+        tags: ["Groups"],
+        summary: "List group members",
+        description: "Get all members of a group with their roles and join dates. Only accessible to group members.",
+      },
     }
   )
 
@@ -519,6 +555,11 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
       params: t.Object({
         groupId: t.String(),
       }),
+      detail: {
+        tags: ["Groups"],
+        summary: "Regenerate join code",
+        description: "Generate a new join code for the group. The old code becomes invalid immediately. Only owners and admins can regenerate codes.",
+      },
     }
   )
 
@@ -589,6 +630,11 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
       params: t.Object({
         groupId: t.String(),
       }),
+      detail: {
+        tags: ["Groups"],
+        summary: "Delete group",
+        description: "Soft delete a group. Only the owner can delete a group. All members are notified of the deletion.",
+      },
     }
   )
 
@@ -762,5 +808,10 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
           currency: t.Optional(t.String({ minLength: 3, maxLength: 3 })),
         })
       ),
+      detail: {
+        tags: ["Balances"],
+        summary: "Get group balances",
+        description: "Calculate and return net balances for all group members, including simplified debt suggestions that minimize the number of transactions needed to settle debts. Optionally convert to a different currency or get individual user balances.",
+      },
     }
   );

@@ -1,0 +1,40 @@
+meta {
+  name: Spending Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/analytics/summary
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~startDate: 2024-01-01
+  ~endDate: 2024-12-31
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Spending Summary
+
+  Get overall spending statistics for a group.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `startDate` (optional): Filter by start date
+  - `endDate` (optional): Filter by end date
+
+  ## Response
+  Returns:
+  - `totalSpending`: Total amount spent
+  - `averageExpense`: Average expense amount
+  - `expenseCount`: Number of expenses
+  - `memberBreakdown`: Per-member spending stats
+}

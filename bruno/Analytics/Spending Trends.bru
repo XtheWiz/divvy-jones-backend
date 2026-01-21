@@ -1,0 +1,41 @@
+meta {
+  name: Spending Trends
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/analytics/trends
+  body: none
+  auth: bearer
+}
+
+params:query {
+  period: monthly
+  ~startDate: 2024-01-01
+  ~endDate: 2024-12-31
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Spending Trends
+
+  Get spending over time grouped by period.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `period` (optional): Grouping period - "daily", "weekly", or "monthly" (default)
+  - `startDate` (optional): Filter by start date
+  - `endDate` (optional): Filter by end date
+
+  ## Response
+  Returns time series data:
+  - `period`: Period identifier (date/week/month)
+  - `total`: Total spending for period
+  - `count`: Number of expenses
+}

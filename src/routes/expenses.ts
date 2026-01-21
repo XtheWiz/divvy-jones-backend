@@ -48,6 +48,11 @@ const createExpenseSchema = {
   params: t.Object({
     groupId: t.String(),
   }),
+  detail: {
+    tags: ["Expenses"],
+    summary: "Create expense",
+    description: "Create a new expense in a group. Supports equal, exact, percentage, or weighted splits. The payer must be a group member.",
+  },
 };
 
 const listExpensesSchema = {
@@ -62,6 +67,11 @@ const listExpensesSchema = {
     category: t.Optional(t.String()),
     paidBy: t.Optional(t.String()),
   }),
+  detail: {
+    tags: ["Expenses"],
+    summary: "List expenses",
+    description: "Get paginated list of expenses in a group with optional filters for date range, category, and payer.",
+  },
 };
 
 const updateExpenseSchema = {
@@ -77,6 +87,11 @@ const updateExpenseSchema = {
     groupId: t.String(),
     expenseId: t.String(),
   }),
+  detail: {
+    tags: ["Expenses"],
+    summary: "Update expense",
+    description: "Update an existing expense. Only the creator or group admins can modify expenses. Cannot modify expenses with existing settlements.",
+  },
 };
 
 // ============================================================================
@@ -325,6 +340,11 @@ export const expenseRoutes = new Elysia({ prefix: "/groups/:groupId/expenses" })
         groupId: t.String(),
         expenseId: t.String(),
       }),
+      detail: {
+        tags: ["Expenses"],
+        summary: "Get expense details",
+        description: "Get detailed information about a specific expense including all splits and who paid.",
+      },
     }
   )
 
@@ -504,5 +524,10 @@ export const expenseRoutes = new Elysia({ prefix: "/groups/:groupId/expenses" })
         groupId: t.String(),
         expenseId: t.String(),
       }),
+      detail: {
+        tags: ["Expenses"],
+        summary: "Delete expense",
+        description: "Soft delete an expense. Only the creator or group admins can delete expenses. Cannot delete expenses with existing settlements.",
+      },
     }
   );

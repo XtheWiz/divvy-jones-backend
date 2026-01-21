@@ -1,0 +1,59 @@
+meta {
+  name: Create Recurring Expense
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/groups/{{groupId}}/recurring-expenses
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Monthly Rent",
+    "subtotal": 1500.00,
+    "currencyCode": "USD",
+    "frequency": "monthly",
+    "dayOfMonth": 1,
+    "category": "housing",
+    "payers": [
+      {
+        "userId": "{{userId}}",
+        "amount": 1500.00
+      }
+    ],
+    "splits": {
+      "mode": "equal"
+    },
+    "startDate": "2024-01-01"
+  }
+}
+
+docs {
+  # Create Recurring Expense
+
+  Create a recurring expense rule that generates expenses automatically.
+
+  ## Request Body
+  - `name` (required): Expense name
+  - `subtotal` (required): Amount
+  - `currencyCode` (required): Currency
+  - `frequency` (required): "daily", "weekly", "biweekly", "monthly", "yearly"
+  - `category` (optional): Category
+  - `payers` (required): Array of payer contributions
+  - `splits` (required): Split configuration
+  - `startDate` (required): When to start generating expenses
+  - `endDate` (optional): When to stop
+  - `dayOfWeek` (optional): For weekly (0-6)
+  - `dayOfMonth` (optional): For monthly (1-31)
+  - `monthOfYear` (optional): For yearly (1-12)
+
+  ## Response
+  Returns created recurring expense rule.
+}

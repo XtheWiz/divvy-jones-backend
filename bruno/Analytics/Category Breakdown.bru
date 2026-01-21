@@ -1,0 +1,40 @@
+meta {
+  name: Category Breakdown
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/analytics/categories
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~startDate: 2024-01-01
+  ~endDate: 2024-12-31
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Category Breakdown
+
+  Get spending breakdown by category.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `startDate` (optional): Filter by start date
+  - `endDate` (optional): Filter by end date
+
+  ## Response
+  Returns array of categories sorted by total spending (descending):
+  - `category`: Category name
+  - `total`: Total amount
+  - `count`: Number of expenses
+  - `percentage`: Percentage of total spending
+}

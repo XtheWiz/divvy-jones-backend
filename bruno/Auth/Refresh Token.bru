@@ -1,0 +1,37 @@
+meta {
+  name: Refresh Token
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{refreshToken}}"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data) {
+    bru.setEnvVar("accessToken", res.body.data.tokens.accessToken);
+    bru.setEnvVar("refreshToken", res.body.data.tokens.refreshToken);
+  }
+}
+
+docs {
+  # Refresh Token
+
+  Exchange a valid refresh token for new access and refresh tokens.
+  Refresh tokens are single-use and rotated on each use.
+
+  ## Request Body
+  - `refreshToken` (required): Valid refresh token from login/register
+
+  ## Response
+  Returns new access and refresh tokens.
+}

@@ -79,6 +79,12 @@ export const userRoutes = new Elysia({ prefix: "/users" })
       linkedProviders,
       createdAt: user.createdAt,
     });
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Get current user profile",
+      description: "Get the authenticated user's profile including email verification status, linked OAuth providers, and account details.",
+    },
   })
 
   // ========================================================================
@@ -101,6 +107,12 @@ export const userRoutes = new Elysia({ prefix: "/users" })
     }
 
     return success(preferences);
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Get user preferences",
+      description: "Get the authenticated user's notification and display preferences.",
+    },
   })
 
   // ========================================================================
@@ -133,6 +145,11 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         notifyOnSettlement: t.Optional(t.Boolean()),
         notifyOnGroupActivity: t.Optional(t.Boolean()),
       }),
+      detail: {
+        tags: ["Users"],
+        summary: "Update user preferences",
+        description: "Update the authenticated user's notification and display preferences.",
+      },
     }
   )
 
@@ -214,6 +231,11 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         newPassword: t.String({ minLength: 8 }),
         currentPassword: t.Optional(t.String()),
       }),
+      detail: {
+        tags: ["Users"],
+        summary: "Set or change password",
+        description: "Set a password for OAuth users or change existing password. Current password is required if user already has a password.",
+      },
     }
   )
 
@@ -278,6 +300,12 @@ export const userRoutes = new Elysia({ prefix: "/users" })
       deletionDate: result.deletionDate,
       gracePeriodDays: 7,
     });
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Request account deletion",
+      description: "Initiate account deletion with a 7-day grace period. A confirmation email is sent. User can cancel during the grace period.",
+    },
   })
 
   // ========================================================================
@@ -297,6 +325,12 @@ export const userRoutes = new Elysia({ prefix: "/users" })
       deletionDate: status.deletionDate,
       canCancel: status.canCancel,
     });
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Get deletion status",
+      description: "Check if an account deletion is pending and whether it can still be cancelled.",
+    },
   })
 
   // ========================================================================
@@ -319,6 +353,12 @@ export const userRoutes = new Elysia({ prefix: "/users" })
     return success({
       message: "Account deletion cancelled",
     });
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Cancel account deletion",
+      description: "Cancel a pending account deletion during the 7-day grace period.",
+    },
   })
 
   // ========================================================================
@@ -341,4 +381,10 @@ export const userRoutes = new Elysia({ prefix: "/users" })
 
     // AC-3.7 & AC-3.8: Return complete user data
     return success(data);
+  }, {
+    detail: {
+      tags: ["Users"],
+      summary: "Export user data",
+      description: "Export all user data in JSON format (GDPR compliance). Includes profile, groups, expenses, settlements, and activity logs.",
+    },
   });

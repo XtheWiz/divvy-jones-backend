@@ -1,0 +1,27 @@
+meta {
+  name: Get Group
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Group Details
+
+  Get detailed information about a specific group including join code.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Response
+  Returns complete group details including join code for sharing.
+}

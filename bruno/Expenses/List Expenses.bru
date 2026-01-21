@@ -1,0 +1,44 @@
+meta {
+  name: List Expenses
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/expenses
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  limit: 20
+  ~dateFrom: 2024-01-01
+  ~dateTo: 2024-12-31
+  ~category: food
+  ~paidBy: {{userId}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # List Expenses
+
+  Get paginated list of expenses in a group.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `page` (optional): Page number (default: 1)
+  - `limit` (optional): Items per page (default: 20)
+  - `dateFrom` (optional): Filter by start date
+  - `dateTo` (optional): Filter by end date
+  - `category` (optional): Filter by category
+  - `paidBy` (optional): Filter by payer user ID
+
+  ## Response
+  Returns paginated array of expenses with pagination metadata.
+}

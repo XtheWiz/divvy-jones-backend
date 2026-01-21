@@ -1,0 +1,33 @@
+meta {
+  name: Join Group
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/groups/join
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "joinCode": "ABCD1234"
+  }
+}
+
+docs {
+  # Join Group
+
+  Join an existing group using its join code.
+
+  ## Request Body
+  - `joinCode` (required): 8-character join code from group owner
+
+  ## Response
+  Returns group details after successful join. New members get "member" role.
+}

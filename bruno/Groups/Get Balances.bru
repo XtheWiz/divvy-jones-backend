@@ -1,0 +1,38 @@
+meta {
+  name: Get Balances
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/balances
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~currency: USD
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Group Balances
+
+  Calculate and return net balances for all group members.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `currency` (optional): Convert balances to specified currency
+  - `userId` (optional): Get individual user balance only
+
+  ## Response
+  Returns:
+  - `memberBalances`: Array of member balances (totalPaid, totalOwed, netBalance)
+  - `simplifiedDebts`: Optimized list of who should pay whom
+  - `conversion`: Exchange rate info if currency conversion applied
+}

@@ -1,0 +1,44 @@
+meta {
+  name: Update Preferences
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/users/me/preferences
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "languageCode": "en",
+    "defaultCurrencyCode": "USD",
+    "timezone": "America/New_York",
+    "pushEnabled": true,
+    "emailNotifications": true,
+    "notifyOnExpenseAdded": true,
+    "notifyOnSettlement": true,
+    "notifyOnGroupActivity": true
+  }
+}
+
+docs {
+  # Update User Preferences
+
+  Update notification and display preferences.
+
+  ## Request Body (all optional)
+  - `languageCode`: Preferred language
+  - `defaultCurrencyCode`: Default currency
+  - `timezone`: Timezone
+  - `pushEnabled`: Enable push notifications
+  - `emailNotifications`: Enable email notifications
+  - `notifyOnExpenseAdded`: Notify on new expenses
+  - `notifyOnSettlement`: Notify on settlements
+  - `notifyOnGroupActivity`: Notify on group changes
+}

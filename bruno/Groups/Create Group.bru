@@ -1,0 +1,43 @@
+meta {
+  name: Create Group
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/groups
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Test Group",
+    "description": "A test expense group",
+    "defaultCurrencyCode": "USD"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data) {
+    bru.setEnvVar("groupId", res.body.data.id);
+  }
+}
+
+docs {
+  # Create Group
+
+  Create a new expense group. The creator automatically becomes the owner.
+
+  ## Request Body
+  - `name` (required): Group name (1-100 characters)
+  - `description` (optional): Group description (max 500 characters)
+  - `defaultCurrencyCode` (optional): Default currency (e.g., "USD")
+
+  ## Response
+  Returns group details including the unique join code.
+}

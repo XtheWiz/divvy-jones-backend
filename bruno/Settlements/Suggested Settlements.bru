@@ -1,0 +1,34 @@
+meta {
+  name: Suggested Settlements
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/groups/{{groupId}}/settlements/suggested
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~currency: USD
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get Suggested Settlements
+
+  Get optimized settlement suggestions to minimize transactions.
+
+  ## Path Parameters
+  - `groupId`: UUID of the group
+
+  ## Query Parameters
+  - `currency` (optional): Display amounts in specified currency
+
+  ## Response
+  Returns array of suggested payments to settle all debts optimally.
+}

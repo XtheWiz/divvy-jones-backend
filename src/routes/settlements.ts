@@ -37,6 +37,11 @@ const createSettlementSchema = {
   params: t.Object({
     groupId: t.String(),
   }),
+  detail: {
+    tags: ["Settlements"],
+    summary: "Create settlement",
+    description: "Create a new settlement (payment) between two group members. The settlement starts in 'pending' status until confirmed by the payee.",
+  },
 };
 
 const listSettlementsSchema = {
@@ -51,6 +56,11 @@ const listSettlementsSchema = {
     dateFrom: t.Optional(t.String()),
     dateTo: t.Optional(t.String()),
   }),
+  detail: {
+    tags: ["Settlements"],
+    summary: "List settlements",
+    description: "Get paginated list of settlements in a group with optional filters for status, involved user, and date range.",
+  },
 };
 
 const settlementIdSchema = {
@@ -58,6 +68,11 @@ const settlementIdSchema = {
     groupId: t.String(),
     settlementId: t.String(),
   }),
+  detail: {
+    tags: ["Settlements"],
+    summary: "Get settlement details",
+    description: "Get detailed information about a specific settlement including status history.",
+  },
 };
 
 const rejectSettlementSchema = {
@@ -68,6 +83,11 @@ const rejectSettlementSchema = {
   body: t.Object({
     reason: t.Optional(t.String({ maxLength: 500 })),
   }),
+  detail: {
+    tags: ["Settlements"],
+    summary: "Reject settlement",
+    description: "Reject a pending settlement. Only the payee can reject. An optional reason can be provided.",
+  },
 };
 
 // ============================================================================

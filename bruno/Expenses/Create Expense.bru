@@ -1,0 +1,57 @@
+meta {
+  name: Create Expense
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/groups/{{groupId}}/expenses
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Dinner",
+    "amount": 50.00,
+    "currency": "USD",
+    "paidBy": "{{userId}}",
+    "category": "food",
+    "description": "Team dinner",
+    "splits": {
+      "type": "equal"
+    }
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data) {
+    bru.setEnvVar("expenseId", res.body.data.id);
+  }
+}
+
+docs {
+  # Create Expense
+
+  Create a new expense in a group with flexible splitting options.
+
+  ## Request Body
+  - `title` (required): Expense title (1-200 characters)
+  - `amount` (required): Amount (minimum 0.01)
+  - `currency` (required): 3-letter currency code
+  - `paidBy` (required): User ID of the payer
+  - `category` (optional): Category name
+  - `description` (optional): Description
+  - `date` (optional): Expense date (ISO format)
+  - `splits` (optional): Split configuration
+    - `type`: "equal", "exact", "percent", or "weight"
+    - `excludeMembers`: Array of user IDs to exclude
+    - `values`: Map of user ID to amount/percent/weight
+
+  ## Response
+  Returns created expense with splits.
+}

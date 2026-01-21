@@ -1,0 +1,47 @@
+meta {
+  name: Create Settlement
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/groups/{{groupId}}/settlements
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "payerUserId": "{{userId}}",
+    "payeeUserId": "{{payeeUserId}}",
+    "amount": 25.00,
+    "currency": "USD",
+    "note": "Settling dinner expense"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data) {
+    bru.setEnvVar("settlementId", res.body.data.id);
+  }
+}
+
+docs {
+  # Create Settlement
+
+  Create a new settlement (payment) between two group members.
+
+  ## Request Body
+  - `payerUserId` (required): User ID of who is paying
+  - `payeeUserId` (required): User ID of who is receiving
+  - `amount` (required): Settlement amount (minimum 0.01)
+  - `currency` (optional): Currency code (defaults to group currency)
+  - `note` (optional): Settlement note
+
+  ## Response
+  Returns settlement in "pending" status. Must be confirmed by payee.
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Export Data
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/users/me/data-export
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Export User Data (GDPR)
+
+  Export all user data in JSON format for GDPR compliance.
+
+  ## Response
+  Returns complete user data including:
+  - Profile information
+  - Groups and memberships
+  - Expenses created
+  - Settlements
+  - Activity logs
+}
