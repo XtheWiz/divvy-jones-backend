@@ -59,29 +59,7 @@ mock.module("../db/schema/users", () => ({
   },
 }));
 
-// Mock auth service
-const mockFindUserById = mock(() => null);
-const mockHashPassword = mock((password: string) => Promise.resolve(`hashed_${password}`));
-const mockVerifyPassword = mock((password: string, hash: string) => Promise.resolve(hash === `hashed_${password}`));
-const mockValidatePasswordStrength = mock(() => ({ valid: true, errors: [] }));
-const mockIsUserActive = mock(() => true);
-const mockIsValidEmail = mock((email: string) => email.includes("@"));
-const mockNormalizeEmail = mock((email: string) => email.toLowerCase().trim());
-
-mock.module("../services/auth.service", () => ({
-  findUserById: mockFindUserById,
-  findUserByEmail: mock(() => Promise.resolve(null)),
-  hashPassword: mockHashPassword,
-  verifyPassword: mockVerifyPassword,
-  validatePasswordStrength: mockValidatePasswordStrength,
-  isUserActive: mockIsUserActive,
-  isValidEmail: mockIsValidEmail,
-  normalizeEmail: mockNormalizeEmail,
-  generateRefreshToken: mock(() => Promise.resolve("mock-token")),
-  verifyRefreshToken: mock(() => Promise.resolve({ valid: true, userId: "user-1" })),
-  revokeRefreshToken: mock(() => Promise.resolve()),
-  revokeAllUserRefreshTokens: mock(() => Promise.resolve()),
-}));
+// Note: auth.service mock removed - tests don't use it and it polluted global module cache
 
 describe("Email Verification Service", () => {
   beforeEach(() => {
@@ -90,7 +68,6 @@ describe("Email Verification Service", () => {
     mockUpdate.mockClear();
     mockSelect.mockClear();
     mockDelete.mockClear();
-    mockFindUserById.mockClear();
   });
 
   describe("Token Generation", () => {

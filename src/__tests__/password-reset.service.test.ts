@@ -54,26 +54,15 @@ const mockFindUserByEmail = mock((email: string) => {
 
 const mockHashPassword = mock((password: string) => Promise.resolve(`hashed_${password}`));
 
-// Mock bcrypt
+// Mock bcrypt functions (called directly, no global mock needed)
 const mockBcryptHash = mock((value: string, rounds: number) => Promise.resolve(`hashed_${value}`));
 const mockBcryptCompare = mock((value: string, hash: string) => {
   // Simple mock comparison - in real tests we'd use actual bcrypt
   return Promise.resolve(hash === `hashed_${value}` || hash.includes("valid"));
 });
 
-// Mock the modules
-mock.module("bcryptjs", () => ({
-  default: {
-    hash: mockBcryptHash,
-    compare: mockBcryptCompare,
-  },
-  hash: mockBcryptHash,
-  compare: mockBcryptCompare,
-}));
-
-mock.module("nanoid", () => ({
-  nanoid: () => "test-token-12345678901234567890",
-}));
+// Note: Removed mock.module("bcryptjs") - tests call mock functions directly
+// and global mock was polluting other test files that import bcryptjs
 
 // ============================================================================
 // Token Generation Tests (AC-4.2, AC-4.3)
