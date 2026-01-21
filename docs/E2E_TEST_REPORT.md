@@ -1,7 +1,7 @@
 # E2E Integration Test Report
 
 **Project:** Divvy-Jones
-**Phase:** Phase 1 - MVP Critical Path
+**Phase:** Phase 1 & 2 - MVP Critical Path + Email Verification & OAuth
 **Date:** 2026-01-21
 **Test Framework:** Bun Test
 
@@ -9,16 +9,16 @@
 
 ## Executive Summary
 
-Phase 1 E2E integration testing has been successfully implemented, covering the critical path of the Divvy-Jones expense splitting application. A total of **78 tests** were created across **7 test files**, with **77 tests passing** and **1 test skipped** due to a known API limitation.
+Phase 1 and Phase 2 E2E integration testing has been successfully implemented, covering the critical path and authentication enhancements of the Divvy-Jones expense splitting application. A total of **211 tests** exist across **15 test files**, with **210 tests passing** and **1 test skipped** due to a known API limitation.
 
 | Metric | Value |
 |--------|-------|
-| Total Test Files | 7 |
-| Total Tests | 78 |
-| Passing | 77 |
+| Total Test Files | 15 |
+| Total Tests | 211 |
+| Passing | 210 |
 | Failing | 0 |
 | Skipped | 1 |
-| Pass Rate | 98.7% |
+| Pass Rate | 99.5% |
 
 ---
 
@@ -306,32 +306,101 @@ if (existing.length > 0) {
 
 ---
 
+---
+
+## Phase 2 Test Coverage
+
+### 8. Email Verification (`email-verification.integration.test.ts`)
+
+**Endpoints:** `POST /v1/auth/register`, `GET /v1/auth/verify-email`, `POST /v1/auth/resend-verification`
+**Tests:** 18 | **Passing:** 18 | **Status:** ✅ Complete
+
+| Test Case | Type | Status |
+|-----------|------|--------|
+| Create unverified user on registration | Success | ✅ Pass |
+| Generate verification token on registration | Success | ✅ Pass |
+| Set token expiry to 24 hours (AC-1.4) | Success | ✅ Pass |
+| Verify email with valid token (AC-1.3) | Success | ✅ Pass |
+| Reject invalid token (400) | Error | ✅ Pass |
+| Reject expired token (400) | Error | ✅ Pass |
+| Mark token as used after verification (AC-1.5) | Success | ✅ Pass |
+| Reject missing token parameter | Validation | ✅ Pass |
+| Resend verification for unverified user (AC-1.6) | Success | ✅ Pass |
+| Return success for non-existent email (enumeration prevention) | Security | ✅ Pass |
+| Return success for already verified user (enumeration prevention) | Security | ✅ Pass |
+| Invalidate old tokens when resending | Success | ✅ Pass |
+| Reject invalid email format | Validation | ✅ Pass |
+| Reject missing email | Validation | ✅ Pass |
+| Show emailVerified=false for new user | Success | ✅ Pass |
+| Show emailVerified=true after verification | Success | ✅ Pass |
+| Handle deleted user gracefully | Edge Case | ✅ Pass |
+| Handle case-insensitive email for resend | Edge Case | ✅ Pass |
+
+**Coverage:** Token generation, verification flow, single-use enforcement, email enumeration prevention
+
+---
+
+### 9. OAuth Integration (`oauth.integration.test.ts`)
+
+**Endpoints:** `GET /v1/auth/google`, `GET /v1/auth/google/callback`, `GET /v1/users/me`, `POST /v1/users/me/password`
+**Tests:** 20 | **Passing:** 20 | **Status:** ✅ Complete
+
+| Test Case | Type | Status |
+|-----------|------|--------|
+| Return 503 when Google OAuth not configured | Error | ✅ Pass |
+| Reject callback without code parameter | Error | ✅ Pass |
+| Reject callback without state parameter | Error | ✅ Pass |
+| Reject callback with invalid state | Error | ✅ Pass |
+| Handle OAuth error from provider | Error | ✅ Pass |
+| Show linked Google provider for OAuth user (AC-2.7) | Success | ✅ Pass |
+| Show emailVerified=true for OAuth user (AC-2.4) | Success | ✅ Pass |
+| Show primaryAuthProvider as google | Success | ✅ Pass |
+| Show hasPassword=false for OAuth-only user | Success | ✅ Pass |
+| Show empty linkedProviders for password-only user | Success | ✅ Pass |
+| Allow OAuth user to set password (AC-2.6) | Success | ✅ Pass |
+| Require current password when changing existing | Validation | ✅ Pass |
+| Change password with correct current password | Success | ✅ Pass |
+| Reject incorrect current password | Error | ✅ Pass |
+| Reject weak new password | Validation | ✅ Pass |
+| Reject missing new password | Validation | ✅ Pass |
+| Require authentication for password endpoint | Auth | ✅ Pass |
+| Link multiple OAuth providers to single user | Success | ✅ Pass |
+| Preserve email verification when linking OAuth | Success | ✅ Pass |
+| Handle user with both password and OAuth | Edge Case | ✅ Pass |
+
+**Coverage:** OAuth redirect flow, callback validation, linked providers, password management for OAuth users
+
+---
+
 ## Future Phases
 
-This Phase 1 implementation covers ~80 tests of the planned ~335 total tests. Future phases should add:
+This Phase 1 + 2 implementation covers ~211 tests of the planned ~335 total tests. Future phases should add:
 
 | Phase | Focus | Estimated Tests |
 |-------|-------|-----------------|
-| Phase 2 | OAuth integration, Email verification | ~40 tests |
 | Phase 3 | Recurring expenses, Categories | ~50 tests |
-| Phase 4 | Attachments, Export, Activity logs | ~80 tests |
+| Phase 4 | Attachments, Export, Activity logs (partial done) | ~40 tests |
 | Phase 5 | Edge cases, Performance, Security | ~85 tests |
 
 ---
 
 ## Conclusion
 
-Phase 1 E2E testing implementation is **complete and successful**. The test suite provides comprehensive coverage of the critical path:
+Phase 1 and Phase 2 E2E testing implementation is **complete and successful**. The test suite provides comprehensive coverage of the critical path and authentication enhancements:
 
 - **Authentication:** Registration, login, token management
+- **Email Verification:** Token generation, verification flow, single-use enforcement
+- **OAuth Integration:** Google OAuth flow, linked providers, password management
 - **Groups:** CRUD operations, membership management
 - **Expenses:** Full expense lifecycle with splits
 - **Settlements:** Complete workflow from creation to confirmation/rejection
 
 All tests follow consistent patterns using the established test infrastructure, making them maintainable and easy to extend for future phases.
 
+**Progress:** 211 tests implemented (63% of planned ~335 total)
+
 ---
 
-*Report generated: 2026-01-21*
+*Report updated: 2026-01-21*
 *Test Framework: Bun Test v1.2.19*
 *Database: PostgreSQL (Docker)*
