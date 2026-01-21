@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Divvy-Jones API Documentation</title>
+  <meta name="description" content="API documentation for Divvy-Jones expense splitting application">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABRElEQVR4nO2WPUoDQRiGn10RTCHYeAMt7LyAhYV4AG/gDWy9gYW1hZewsLCw8AJ2NhaCYCEoiIUIgj8xEHZhZmZ3ZnZmE/CDgWVn5n3ezPfNbgL/lJIKsAzsAOvALDANjAPjwBDwBrwAj8At0Abc4Qm4BzzMYwArgVIhqQHbwG6Bl/8IFQeYBQ6BDaAZsP4z4ARoAjcS8C0BW8A8sAHMBCj/DrwAbeBKAl4DsAYsAssByr8Dz0AHuJSAHwmYAlaBBaAWoPwrcA50gAsJ+JmAMWAJmAtQ/gU4A86AUwn4lYCKIvAYoPwz0AL2JeBvAiqKQCtA+SfgCDiWgH8SoJNwiRdKwCHQloB/EqATcOQJ2AceJOCfBGgSDz0BLeBeAn4koBZwAE4TsAvcScCPBNSCroGHCdgGbiXgRwImQs+ApwnYAW4k4FdKSl8OZLaBnsbP/wAAAABJRU5ErkJggg==">
+
+  <!-- Redoc CSS -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Custom theme overrides */
+    .redoc-wrap {
+      --primary-color: #6366f1;
+    }
+  </style>
+</head>
+<body>
+  <!-- Redoc Element -->
+  <redoc
+    spec-url="openapi.json"
+    hide-download-button="false"
+    theme='{
+      "colors": {
+        "primary": {
+          "main": "#6366f1"
+        },
+        "success": {
+          "main": "#22c55e"
+        },
+        "warning": {
+          "main": "#f59e0b"
+        },
+        "error": {
+          "main": "#ef4444"
+        },
+        "text": {
+          "primary": "#1f2937"
+        }
+      },
+      "typography": {
+        "fontSize": "15px",
+        "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+        "headings": {
+          "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+        },
+        "code": {
+          "fontFamily": "\"JetBrains Mono\", \"Fira Code\", Consolas, monospace"
+        }
+      },
+      "sidebar": {
+        "backgroundColor": "#f9fafb",
+        "textColor": "#374151"
+      },
+      "rightPanel": {
+        "backgroundColor": "#1f2937"
+      }
+    }'
+  ></redoc>
+
+  <!-- Redoc Standalone JS -->
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>
