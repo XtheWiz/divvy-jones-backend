@@ -6,20 +6,7 @@ import { routes } from "./routes";
 export const app = new Elysia()
   .use(
     cors({
-      origin: ({ request }) => {
-        const corsOrigins = process.env.CORS_ORIGINS?.split(",");
-        const requestOrigin = request.headers.get('origin') || '*';
-
-        if (corsOrigins && corsOrigins.length > 0) {
-          // Check if request origin is in allowed list
-          if (corsOrigins.includes(requestOrigin)) {
-            return requestOrigin;
-          }
-          return false;
-        }
-        // In development, reflect the request origin
-        return requestOrigin;
-      },
+      origin: process.env.CORS_ORIGINS?.split(",") ?? true,
       credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization'],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
