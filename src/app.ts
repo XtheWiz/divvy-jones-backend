@@ -4,23 +4,34 @@ import { routes } from "./routes";
 
 // Manual CORS middleware since @elysiajs/cors isn't setting Access-Control-Allow-Origin
 const corsMiddleware = new Elysia()
-  .onRequest(({ request, set }) => {
-    const origin = request.headers.get('origin');
+  .derive(({ request }) => {
+    const origin = request.headers.get('origin') || '*';
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
 
     // Allow all origins in development, or check against allowed list
-    if (allowedOrigins.length === 0 || (origin && allowedOrigins.includes(origin))) {
-      set.headers['Access-Control-Allow-Origin'] = origin || '*';
-    } else if (origin) {
-      set.headers['Access-Control-Allow-Origin'] = origin;
+    let allowOrigin = '*';
+    if (allowedOrigins.length > 0) {
+      if (origin && allowedOrigins.includes(origin)) {
+        allowOrigin = origin;
+      }
+    } else {
+      allowOrigin = origin;
     }
 
+    return { corsOrigin: allowOrigin };
+  })
+  .onAfterHandle(({ set, corsOrigin }) => {
+    set.headers['Access-Control-Allow-Origin'] = corsOrigin;
+    set.headers['Access-Control-Allow-Credentials'] = 'true';
+    set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+    set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+  })
+  .options('*', ({ set, corsOrigin }) => {
+    set.headers['Access-Control-Allow-Origin'] = corsOrigin;
     set.headers['Access-Control-Allow-Credentials'] = 'true';
     set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
     set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
     set.headers['Access-Control-Max-Age'] = '86400';
-  })
-  .options('*', ({ set }) => {
     set.status = 204;
     return '';
   });
