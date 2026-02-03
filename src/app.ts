@@ -2,36 +2,48 @@ import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import { routes } from "./routes";
 
+// Default allowed origins for development
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'http://localhost:5000',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:8080',
+  'http://127.0.0.1:5000',
+];
+
 // Manual CORS middleware since @elysiajs/cors isn't setting Access-Control-Allow-Origin
 const corsMiddleware = new Elysia()
   .derive(({ request }) => {
-    const origin = request.headers.get('origin') || '*';
-    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
+    const origin = request.headers.get('origin');
+    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || DEFAULT_CORS_ORIGINS;
 
-    // Allow all origins in development, or check against allowed list
-    let allowOrigin = '*';
-    if (allowedOrigins.length > 0) {
-      if (origin && allowedOrigins.includes(origin)) {
+    // Check if request origin is allowed
+    let allowOrigin = '';
+    if (origin) {
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         allowOrigin = origin;
       }
-    } else {
-      allowOrigin = origin;
     }
 
     return { corsOrigin: allowOrigin };
   })
   .onAfterHandle(({ set, corsOrigin }) => {
-    set.headers['Access-Control-Allow-Origin'] = corsOrigin;
-    set.headers['Access-Control-Allow-Credentials'] = 'true';
-    set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
-    set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    if (corsOrigin) {
+      set.headers['Access-Control-Allow-Origin'] = corsOrigin;
+      set.headers['Access-Control-Allow-Credentials'] = 'true';
+      set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+      set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    }
   })
   .options('*', ({ set, corsOrigin }) => {
-    set.headers['Access-Control-Allow-Origin'] = corsOrigin;
-    set.headers['Access-Control-Allow-Credentials'] = 'true';
-    set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
-    set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
-    set.headers['Access-Control-Max-Age'] = '86400';
+    if (corsOrigin) {
+      set.headers['Access-Control-Allow-Origin'] = corsOrigin;
+      set.headers['Access-Control-Allow-Credentials'] = 'true';
+      set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+      set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+      set.headers['Access-Control-Max-Age'] = '86400';
+    }
     set.status = 204;
     return '';
   });
