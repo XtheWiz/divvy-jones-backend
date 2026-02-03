@@ -1,17 +1,32 @@
 import { Elysia } from "elysia";
-import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { routes } from "./routes";
 
+// Manual CORS middleware since @elysiajs/cors isn't setting Access-Control-Allow-Origin
+const corsMiddleware = new Elysia()
+  .onRequest(({ request, set }) => {
+    const origin = request.headers.get('origin');
+    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [];
+
+    // Allow all origins in development, or check against allowed list
+    if (allowedOrigins.length === 0 || (origin && allowedOrigins.includes(origin))) {
+      set.headers['Access-Control-Allow-Origin'] = origin || '*';
+    } else if (origin) {
+      set.headers['Access-Control-Allow-Origin'] = origin;
+    }
+
+    set.headers['Access-Control-Allow-Credentials'] = 'true';
+    set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+    set.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+    set.headers['Access-Control-Max-Age'] = '86400';
+  })
+  .options('*', ({ set }) => {
+    set.status = 204;
+    return '';
+  });
+
 export const app = new Elysia()
-  .use(
-    cors({
-      origin: process.env.CORS_ORIGINS?.split(",") ?? true,
-      credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization'],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    })
-  )
+  .use(corsMiddleware)
   .use(
     swagger({
       path: "/docs",
