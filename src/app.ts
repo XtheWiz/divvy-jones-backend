@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import { routes } from "./routes";
 
-// Default allowed origins for development
+// Default allowed origins for development and production
 const DEFAULT_CORS_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:8080',
@@ -10,6 +10,7 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
   'http://127.0.0.1:5000',
+  'https://divvy-jones.vercel.app',
 ];
 
 // Manual CORS middleware since @elysiajs/cors isn't setting Access-Control-Allow-Origin
