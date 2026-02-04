@@ -11,6 +11,7 @@ const DEFAULT_CORS_ORIGINS = [
   'http://127.0.0.1:8080',
   'http://127.0.0.1:5000',
   'https://divvy-jones.vercel.app',
+  'https://web-jet-six-68.vercel.app',
 ];
 
 // Manual CORS middleware since @elysiajs/cors isn't setting Access-Control-Allow-Origin
