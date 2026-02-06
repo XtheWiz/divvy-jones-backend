@@ -18,12 +18,14 @@ const DEFAULT_CORS_ORIGINS = [
 const corsMiddleware = new Elysia()
   .derive(({ request }) => {
     const origin = request.headers.get('origin');
-    const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || DEFAULT_CORS_ORIGINS;
+    const allowedOrigins = (process.env.CORS_ORIGINS?.split(',') || DEFAULT_CORS_ORIGINS)
+      .map((o) => o.replace(/\/+$/, ''));
 
-    // Check if request origin is allowed
+    // Normalize origin by stripping trailing slashes before comparison
     // Never allow wildcard with credentials (violates CORS spec)
     let allowOrigin = '';
-    if (origin && allowedOrigins.includes(origin)) {
+    const normalizedOrigin = origin?.replace(/\/+$/, '');
+    if (origin && normalizedOrigin && allowedOrigins.includes(normalizedOrigin)) {
       allowOrigin = origin;
     }
 

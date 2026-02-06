@@ -90,6 +90,9 @@ export function splitEqual(totalCents: number, count: number): number[] {
  * Returns an array of cent amounts that sum exactly to `totalCents`.
  */
 export function splitByWeights(totalCents: number, weights: number[]): number[] {
+  if (weights.some((w) => w < 0)) {
+    throw new Error("Weights must not be negative");
+  }
   const totalWeight = weights.reduce((s, w) => s + w, 0);
   if (totalWeight === 0) return weights.map(() => 0);
 

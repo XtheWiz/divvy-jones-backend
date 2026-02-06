@@ -355,10 +355,16 @@ export function getClientIP(request: Request): string {
 /**
  * Basic IP address validation (IPv4 and IPv6)
  */
-function isValidIP(ip: string): boolean {
-  // IPv4: digits and dots
-  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
-  // IPv6: hex digits and colons (simplified)
+export function isValidIP(ip: string): boolean {
+  // IPv4: each octet must be 0-255
+  const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    return ipv4Match.slice(1).every((octet) => {
+      const n = parseInt(octet, 10);
+      return n >= 0 && n <= 255;
+    });
+  }
+  // IPv6: hex digits and colons, must contain at least one colon
   const ipv6 = /^[0-9a-fA-F:]+$/;
-  return ipv4.test(ip) || ipv6.test(ip);
+  return ip.includes(":") && ipv6.test(ip);
 }
