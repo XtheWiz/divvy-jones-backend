@@ -21,11 +21,10 @@ const corsMiddleware = new Elysia()
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || DEFAULT_CORS_ORIGINS;
 
     // Check if request origin is allowed
+    // Never allow wildcard with credentials (violates CORS spec)
     let allowOrigin = '';
-    if (origin) {
-      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-        allowOrigin = origin;
-      }
+    if (origin && allowedOrigins.includes(origin)) {
+      allowOrigin = origin;
     }
 
     return { corsOrigin: allowOrigin };

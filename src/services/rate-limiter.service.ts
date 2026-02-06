@@ -328,22 +328,37 @@ export function keyFromEmail(email: string): string {
 }
 
 /**
- * Get client IP from request headers
- * Handles common proxy headers
+ * Get client IP from request headers.
+ * Only trusts proxy headers (X-Forwarded-For, X-Real-IP) when TRUST_PROXY=true.
+ * This prevents attackers from spoofing their IP to bypass rate limits.
  */
 export function getClientIP(request: Request): string {
-  // Check common proxy headers
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    // Take the first IP in the chain (original client)
-    return forwardedFor.split(",")[0].trim();
-  }
+  const trustProxy = process.env.TRUST_PROXY === "true";
 
-  const realIP = request.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
+  if (trustProxy) {
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    if (forwardedFor) {
+      const ip = forwardedFor.split(",")[0].trim();
+      if (isValidIP(ip)) return ip;
+    }
+
+    const realIP = request.headers.get("x-real-ip");
+    if (realIP && isValidIP(realIP)) {
+      return realIP;
+    }
   }
 
   // Fallback - in development, might not have these headers
   return "127.0.0.1";
+}
+
+/**
+ * Basic IP address validation (IPv4 and IPv6)
+ */
+function isValidIP(ip: string): boolean {
+  // IPv4: digits and dots
+  const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+  // IPv6: hex digits and colons (simplified)
+  const ipv6 = /^[0-9a-fA-F:]+$/;
+  return ipv4.test(ip) || ipv6.test(ip);
 }

@@ -6,6 +6,7 @@
  */
 
 import { eq, and, desc, count, gte, lte, sql, or } from "drizzle-orm";
+import { logger } from "../lib/logger";
 import {
   db,
   activityLog,
@@ -110,7 +111,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
     });
   } catch (err) {
     // Log error but don't throw - activity logging shouldn't break main operations
-    console.error("Failed to log activity:", err);
+    logger.error("Failed to log activity", { error: String(err), entityId });
   }
 }
 

@@ -7,6 +7,7 @@
 
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes } from "../lib/responses";
+import { logger } from "../lib/logger";
 import {
   SUPPORTED_CURRENCIES,
   getExchangeRateService,
@@ -47,7 +48,7 @@ export const currencyRoutes = new Elysia({ prefix: "/currencies" })
           isFallback: rates.isFallback || false,
         });
       } catch (err) {
-        console.error("Failed to fetch currency rates:", err);
+        logger.error("Failed to fetch currency rates", { error: String(err) });
         set.status = 500;
         return error(
           ErrorCodes.INTERNAL_ERROR,
@@ -96,7 +97,7 @@ export const currencyRoutes = new Elysia({ prefix: "/currencies" })
           lastUpdated: rates.timestamp.toISOString(),
         });
       } catch (err) {
-        console.error("Failed to fetch currency rate:", err);
+        logger.error("Failed to fetch currency rate", { error: String(err) });
         set.status = 500;
         return error(
           ErrorCodes.INTERNAL_ERROR,

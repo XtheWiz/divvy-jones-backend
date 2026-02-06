@@ -88,22 +88,26 @@ export async function generateResetToken(
   // AC-4.2: Set expiry to 1 hour from now
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS);
 
-  // Invalidate any existing reset tokens for this user (optional security measure)
-  await db
-    .update(passwordResetTokens)
-    .set({ usedAt: new Date() })
-    .where(
-      and(
-        eq(passwordResetTokens.userId, user.id),
-        isNull(passwordResetTokens.usedAt)
-      )
-    );
+  // Wrap invalidation + creation in a transaction to prevent race conditions
+  // where concurrent requests could both create valid tokens
+  await db.transaction(async (tx) => {
+    // Invalidate any existing reset tokens for this user
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokens.userId, user.id),
+          isNull(passwordResetTokens.usedAt)
+        )
+      );
 
-  // Store hashed token in database
-  await db.insert(passwordResetTokens).values({
-    userId: user.id,
-    tokenHash,
-    expiresAt,
+    // Store hashed token in database
+    await tx.insert(passwordResetTokens).values({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
   });
 
   // Return raw token (to be sent in email) and expiry

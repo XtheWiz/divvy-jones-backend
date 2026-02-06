@@ -18,6 +18,8 @@
     "test:unit": "bun test --preload ./src/__tests__/setup.ts src/__tests__/*.test.ts",
     "test:integration": "bun test --preload ./src/__tests__/integration/setup.ts src/__tests__/integration/*.test.ts",
     "test:all": "bun test",
+    "test:coverage": "bun test --coverage",
+    "test:unit:coverage": "bun test --coverage --preload ./src/__tests__/setup.ts src/__tests__/*.test.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:src": "tsc --noEmit -p tsconfig.src.json",
     "lint:routes": "./scripts/check-route-params.sh",
@@ -26,7 +28,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.971.0",
     "@aws-sdk/s3-request-presigner": "^3.971.0",
-    "@elysiajs/cors": "^1.0.0",
     "@elysiajs/jwt": "^1.0.0",
     "@elysiajs/swagger": "^1.0.0",
     "bcryptjs": "^2.4.3",

@@ -1,8 +1,12 @@
 import { Elysia, t } from "elysia";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { db, users } from "../db";
 import { success, error, ErrorCodes } from "../lib/responses";
+import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
+import { rateLimit } from "../middleware/rate-limit";
+import { getClientIP, keyFromUserId } from "../services/rate-limiter.service";
 import {
   getUserPreferences,
   updateUserPreferences,
@@ -190,7 +194,6 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         }
 
         // Verify current password
-        const bcrypt = await import("bcryptjs");
         const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
         if (!isValid) {
           set.status = 401;
@@ -291,7 +294,7 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         html: emailContent.html,
         text: emailContent.text,
       }).catch((err) => {
-        console.error("Failed to send deletion confirmation email:", err);
+        logger.error("Failed to send deletion confirmation email", { error: String(err), userId: auth.userId });
       });
     }
 
@@ -365,7 +368,16 @@ export const userRoutes = new Elysia({ prefix: "/users" })
   // GET /users/me/data-export - Export User Data
   // Sprint 010 AC-3.7: Data export returns all user data as JSON
   // Sprint 010 AC-3.8: Data export includes: profile, groups, expenses, settlements, activity
+  // Rate limited: 3 requests per hour per user to prevent abuse
   // ========================================================================
+  .use(rateLimit({
+    config: { maxRequests: 3, windowMs: 60 * 60 * 1000, prefix: "data-export" },
+    keyGenerator: (ctx) => {
+      const auth = (ctx as { auth?: { userId: string } }).auth;
+      return auth?.userId ? keyFromUserId(auth.userId) : getClientIP(ctx.request);
+    },
+    errorMessage: "Too many data export requests. Please try again later.",
+  }))
   .get("/me/data-export", async ({ auth, authError, set }) => {
     if (!auth) {
       set.status = 401;

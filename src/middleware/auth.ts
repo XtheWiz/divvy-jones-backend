@@ -7,7 +7,13 @@ import { findUserById, isUserActive, type AccessTokenPayload } from "../services
 // JWT Configuration
 // ============================================================================
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET environment variable is required. " +
+    "Set a secure, random secret (minimum 32 characters recommended)."
+  );
+}
 const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
 
 // ============================================================================

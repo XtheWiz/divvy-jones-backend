@@ -15,6 +15,7 @@
 
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes, paginated } from "../lib/responses";
+import { logger } from "../lib/logger";
 import { requireGroupMember } from "../middleware/group";
 import { findGroupById } from "../services/group.service";
 import {
@@ -148,7 +149,7 @@ export const commentRoutes = new Elysia({ prefix: "/groups/:groupId/expenses/:ex
             }
           }
         } catch (err) {
-          console.error("Error sending comment notifications:", err);
+          logger.error("Error sending comment notifications", { error: String(err) });
         }
       });
 

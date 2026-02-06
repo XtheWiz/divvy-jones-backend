@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { rateLimit } from "elysia-rate-limit";
 import { db, users, userSettings } from "../db";
 import { success, error, ErrorCodes } from "../lib/responses";
+import { logger } from "../lib/logger";
 import { jwtPlugin, generateAccessToken } from "../middleware/auth";
 import {
   hashPassword,
@@ -150,12 +151,15 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       duration: 60000, // 1 minute window
       max: isTestEnvironment ? 1000 : 5, // Relaxed in tests, strict in production
       generator: (req) => {
-        // Use X-Forwarded-For for proxied requests, fallback to a default
-        return (
-          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-          req.headers.get("x-real-ip") ||
-          "unknown"
-        );
+        // Only trust proxy headers when TRUST_PROXY=true to prevent spoofing
+        const trustProxy = process.env.TRUST_PROXY === "true";
+        if (trustProxy) {
+          const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+          if (forwarded) return forwarded;
+          const realIp = req.headers.get("x-real-ip");
+          if (realIp) return realIp;
+        }
+        return "127.0.0.1";
       },
       errorResponse: new Response(JSON.stringify({
         success: false,
@@ -265,7 +269,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
             });
           }
         } catch (err) {
-          console.error("Failed to send verification email:", err);
+          logger.error("Failed to send verification email", { error: String(err) });
         }
       });
 
@@ -468,7 +472,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
               text: emailContent.text,
             });
           } catch (err) {
-            console.error("Failed to send password reset email:", err);
+            logger.error("Failed to send password reset email", { error: String(err) });
           }
         });
       }
@@ -584,7 +588,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
                 text: emailContent.text,
               });
             } catch (err) {
-              console.error("Failed to send verification email:", err);
+              logger.error("Failed to send verification email", { error: String(err) });
             }
           });
         }

@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes, paginated } from "../lib/responses";
+import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
 import { findGroupById, isMemberOfGroup } from "../services/group.service";
 import {
@@ -172,7 +173,7 @@ export const settlementRoutes = new Elysia({ prefix: "/groups/:groupId/settlemen
           });
         } catch (err) {
           // If conversion fails, return original amounts
-          console.error("Currency conversion failed:", err);
+          logger.error("Currency conversion failed", { error: String(err) });
         }
       }
 

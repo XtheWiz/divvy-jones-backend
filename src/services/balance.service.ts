@@ -20,6 +20,7 @@ import {
   settlements,
 } from "../db";
 import { getCacheService, CACHE_KEYS, CACHE_TTL } from "./cache.service";
+import { toCents, fromCents, splitByWeights } from "../lib/utils";
 
 // ============================================================================
 // Types
@@ -159,17 +160,16 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
     };
   }
 
-  // Initialize balances
-  const memberMap = new Map(
+  // Initialize balances in integer cents to avoid floating-point errors
+  const memberCentsMap = new Map(
     members.map((m) => [
       m.memberId,
       {
         memberId: m.memberId,
         userId: m.userId,
         displayName: m.displayName,
-        totalPaid: 0,
-        totalOwed: 0,
-        netBalance: 0,
+        totalPaidCents: 0,
+        totalOwedCents: 0,
       },
     ])
   );
@@ -192,7 +192,14 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
     return {
       groupId,
       currency,
-      memberBalances: Array.from(memberMap.values()),
+      memberBalances: Array.from(memberCentsMap.values()).map((m) => ({
+        memberId: m.memberId,
+        userId: m.userId,
+        displayName: m.displayName,
+        totalPaid: 0,
+        totalOwed: 0,
+        netBalance: 0,
+      })),
       simplifiedDebts: [],
       calculatedAt: new Date(),
     };
@@ -209,11 +216,11 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
     .from(expensePayers)
     .where(inArray(expensePayers.expenseId, expenseIds));
 
-  // Sum up what each member paid
+  // Sum up what each member paid (in cents)
   for (const payer of payers) {
-    const balance = memberMap.get(payer.memberId);
+    const balance = memberCentsMap.get(payer.memberId);
     if (balance) {
-      balance.totalPaid += parseFloat(payer.amount);
+      balance.totalPaidCents += toCents(payer.amount);
     }
   }
 
@@ -248,8 +255,9 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
       .from(expenseItems)
       .where(inArray(expenseItems.id, itemIds));
 
-    const itemAmountMap = new Map(
-      itemAmounts.map((i) => [i.id, parseFloat(i.unitValue) * parseFloat(i.quantity)])
+    // Store item totals in cents
+    const itemCentsMap = new Map(
+      itemAmounts.map((i) => [i.id, toCents(parseFloat(i.unitValue) * parseFloat(i.quantity))])
     );
 
     // Group splits by item to calculate totals
@@ -261,37 +269,48 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
       splitsByItem.get(split.itemId)!.push(split);
     }
 
-    // Calculate what each member owes
+    // Calculate what each member owes (in cents)
     for (const [itemId, itemSplits] of splitsByItem) {
-      const itemTotal = itemAmountMap.get(itemId) || 0;
+      const itemTotalCents = itemCentsMap.get(itemId) || 0;
 
-      // Calculate total weight for this item
-      const totalWeight = itemSplits.reduce(
-        (sum, s) => sum + parseFloat(s.weight || "1"),
-        0
-      );
+      // Separate exact splits from weighted splits
+      let exactCentsUsed = 0;
+      const weightedSplits: typeof itemSplits = [];
 
       for (const split of itemSplits) {
-        const balance = memberMap.get(split.memberId);
-        if (!balance) continue;
-
-        let owedAmount: number;
         if (split.shareMode === "exact" && split.exactAmount) {
-          owedAmount = parseFloat(split.exactAmount);
+          const balance = memberCentsMap.get(split.memberId);
+          if (balance) {
+            const cents = toCents(split.exactAmount);
+            balance.totalOwedCents += cents;
+            exactCentsUsed += cents;
+          }
         } else {
-          const weight = parseFloat(split.weight || "1");
-          owedAmount = (itemTotal * weight) / totalWeight;
+          weightedSplits.push(split);
         }
+      }
 
-        balance.totalOwed += owedAmount;
+      // Distribute remaining cents by weight
+      if (weightedSplits.length > 0) {
+        const remainingCents = itemTotalCents - exactCentsUsed;
+        const weights = weightedSplits.map((s) => parseFloat(s.weight || "1"));
+        const centAmounts = splitByWeights(remainingCents, weights);
+
+        weightedSplits.forEach((split, idx) => {
+          const balance = memberCentsMap.get(split.memberId);
+          if (balance) {
+            balance.totalOwedCents += centAmounts[idx];
+          }
+        });
       }
     }
   }
 
   // AC-1.14, AC-1.15: Include confirmed settlements in balance calculation
-  // When A pays B in a settlement:
-  //   - A's balance decreases (they paid out money)
-  //   - B's balance increases (they received money)
+  // When A settles a debt by paying B:
+  //   - A's totalPaid increases → netBalance (totalPaid - totalOwed) goes up (less debt)
+  //   - B's totalOwed increases → netBalance (totalPaid - totalOwed) goes down (less credit)
+  // This correctly reduces the outstanding debt between both parties.
   const confirmedSettlements = await db
     .select({
       payerMemberId: settlements.payerMemberId,
@@ -306,42 +325,45 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
       )
     );
 
-  // Apply settlement adjustments
+  // Apply settlement adjustments (in cents)
   for (const settlement of confirmedSettlements) {
-    const amount = parseFloat(settlement.amount);
+    const amountCents = toCents(settlement.amount);
 
     // Payer's totalPaid increases (they paid in settlement)
-    const payerBalance = memberMap.get(settlement.payerMemberId);
+    const payerBalance = memberCentsMap.get(settlement.payerMemberId);
     if (payerBalance) {
-      payerBalance.totalPaid += amount;
+      payerBalance.totalPaidCents += amountCents;
     }
 
-    // Payee's totalOwed increases (settlement received reduces what they're owed)
-    // This effectively reduces their positive balance
-    const payeeBalance = memberMap.get(settlement.payeeMemberId);
+    // Payee's totalOwed increases: since netBalance = totalPaid - totalOwed,
+    // increasing totalOwed reduces their positive credit (they've been paid back)
+    const payeeBalance = memberCentsMap.get(settlement.payeeMemberId);
     if (payeeBalance) {
-      payeeBalance.totalOwed += amount;
+      payeeBalance.totalOwedCents += amountCents;
     }
   }
 
-  // AC-3.1, AC-3.2, AC-3.3: Calculate net balance
+  // AC-3.1, AC-3.2, AC-3.3: Calculate net balance (convert cents to dollars)
   const memberBalances: MemberBalance[] = [];
-  for (const balance of memberMap.values()) {
-    balance.netBalance = Math.round((balance.totalPaid - balance.totalOwed) * 100) / 100;
-    balance.totalPaid = Math.round(balance.totalPaid * 100) / 100;
-    balance.totalOwed = Math.round(balance.totalOwed * 100) / 100;
-    memberBalances.push(balance);
+  for (const balance of memberCentsMap.values()) {
+    memberBalances.push({
+      memberId: balance.memberId,
+      userId: balance.userId,
+      displayName: balance.displayName,
+      totalPaid: fromCents(balance.totalPaidCents),
+      totalOwed: fromCents(balance.totalOwedCents),
+      netBalance: fromCents(balance.totalPaidCents - balance.totalOwedCents),
+    });
   }
 
-  // AC-3.4: Verify sum of balances is zero (within rounding tolerance)
-  const totalBalance = memberBalances.reduce((sum, b) => sum + b.netBalance, 0);
-  if (Math.abs(totalBalance) > 0.01) {
-    // Adjust the first member's balance to account for rounding
-    if (memberBalances.length > 0) {
-      memberBalances[0].netBalance = Math.round(
-        (memberBalances[0].netBalance - totalBalance) * 100
-      ) / 100;
-    }
+  // AC-3.4: Verify sum of balances is zero
+  // With integer arithmetic this should always be exact, but verify anyway
+  const totalBalanceCents = Array.from(memberCentsMap.values())
+    .reduce((sum, b) => sum + (b.totalPaidCents - b.totalOwedCents), 0);
+  if (totalBalanceCents !== 0 && memberBalances.length > 0) {
+    // Adjust the first member's balance to account for any discrepancy
+    const adjustedNet = memberBalances[0].netBalance - fromCents(totalBalanceCents);
+    memberBalances[0].netBalance = fromCents(toCents(adjustedNet));
   }
 
   // AC-3.5, AC-3.6: Calculate simplified debts
@@ -369,37 +391,38 @@ export async function calculateGroupBalances(groupId: string): Promise<GroupBala
  * 6. Repeat until all balanced
  */
 function simplifyDebts(memberBalances: MemberBalance[]): SimplifiedDebt[] {
-  // Create working copies
+  // Work in integer cents to avoid floating-point errors
   const creditors: Array<{
     memberId: string;
     userId: string;
     displayName: string;
-    balance: number;
+    cents: number;
   }> = [];
 
   const debtors: Array<{
     memberId: string;
     userId: string;
     displayName: string;
-    balance: number; // stored as positive (amount they owe)
+    cents: number; // stored as positive (amount they owe)
   }> = [];
 
   for (const member of memberBalances) {
-    if (member.netBalance > 0.01) {
+    const cents = toCents(member.netBalance);
+    if (cents > 0) {
       // Creditor - is owed money
       creditors.push({
         memberId: member.memberId,
         userId: member.userId,
         displayName: member.displayName,
-        balance: member.netBalance,
+        cents,
       });
-    } else if (member.netBalance < -0.01) {
+    } else if (cents < 0) {
       // Debtor - owes money
       debtors.push({
         memberId: member.memberId,
         userId: member.userId,
         displayName: member.displayName,
-        balance: Math.abs(member.netBalance),
+        cents: Math.abs(cents),
       });
     }
   }
@@ -407,8 +430,8 @@ function simplifyDebts(memberBalances: MemberBalance[]): SimplifiedDebt[] {
   const debts: SimplifiedDebt[] = [];
 
   // Sort by balance (descending)
-  creditors.sort((a, b) => b.balance - a.balance);
-  debtors.sort((a, b) => b.balance - a.balance);
+  creditors.sort((a, b) => b.cents - a.cents);
+  debtors.sort((a, b) => b.cents - a.cents);
 
   // Match debtors to creditors
   let creditorIdx = 0;
@@ -418,21 +441,13 @@ function simplifyDebts(memberBalances: MemberBalance[]): SimplifiedDebt[] {
     const creditor = creditors[creditorIdx];
     const debtor = debtors[debtorIdx];
 
-    // Skip if either is effectively zero
-    if (creditor.balance < 0.01) {
-      creditorIdx++;
-      continue;
-    }
-    if (debtor.balance < 0.01) {
-      debtorIdx++;
-      continue;
-    }
+    if (creditor.cents <= 0) { creditorIdx++; continue; }
+    if (debtor.cents <= 0) { debtorIdx++; continue; }
 
-    // Calculate transfer amount
-    const amount = Math.min(creditor.balance, debtor.balance);
-    const roundedAmount = Math.round(amount * 100) / 100;
+    // Calculate transfer amount in cents
+    const transferCents = Math.min(creditor.cents, debtor.cents);
 
-    if (roundedAmount > 0) {
+    if (transferCents > 0) {
       debts.push({
         from: {
           memberId: debtor.memberId,
@@ -444,21 +459,16 @@ function simplifyDebts(memberBalances: MemberBalance[]): SimplifiedDebt[] {
           userId: creditor.userId,
           displayName: creditor.displayName,
         },
-        amount: roundedAmount,
+        amount: fromCents(transferCents),
       });
     }
 
     // Update balances
-    creditor.balance -= amount;
-    debtor.balance -= amount;
+    creditor.cents -= transferCents;
+    debtor.cents -= transferCents;
 
-    // Move to next if exhausted
-    if (creditor.balance < 0.01) {
-      creditorIdx++;
-    }
-    if (debtor.balance < 0.01) {
-      debtorIdx++;
-    }
+    if (creditor.cents <= 0) creditorIdx++;
+    if (debtor.cents <= 0) debtorIdx++;
   }
 
   return debts;

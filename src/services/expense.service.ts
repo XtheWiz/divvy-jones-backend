@@ -22,6 +22,7 @@ import {
   logExpenseUpdated,
   logExpenseDeleted,
 } from "./activity.service";
+import { toCents, fromCents, splitEqual, splitByWeights } from "../lib/utils";
 
 // ============================================================================
 // Constants
@@ -193,18 +194,15 @@ export async function calculateSplits(
         return { splits: [], error: "No members to split among" };
       }
 
-      const shareAmount = totalAmount / participatingMembers.length;
-      // Round to 2 decimal places, handle rounding errors
-      const roundedShare = Math.round(shareAmount * 100) / 100;
-      const remainder = Math.round((totalAmount - roundedShare * participatingMembers.length) * 100) / 100;
+      // Use integer cents to avoid floating-point errors
+      const totalCents = toCents(totalAmount);
+      const centAmounts = splitEqual(totalCents, participatingMembers.length);
 
       participatingMembers.forEach((member, index) => {
-        // Give any rounding remainder to the first person
-        const amount = index === 0 ? roundedShare + remainder : roundedShare;
         splits.push({
           memberId: member.memberId,
           userId: member.userId,
-          amount,
+          amount: fromCents(centAmounts[index]),
           shareMode: "equal",
           weight: 1,
         });
@@ -251,20 +249,15 @@ export async function calculateSplits(
       }
 
       let totalPercent = 0;
+      const percentEntries: Array<{ userId: string; memberId: string; percent: number }> = [];
+
       for (const [userId, percent] of Object.entries(splitConfig.values)) {
         const memberId = memberMap.get(userId);
         if (!memberId) {
           return { splits: [], error: `User ${userId} is not a member of the group` };
         }
         totalPercent += percent;
-        const amount = Math.round((totalAmount * percent / 100) * 100) / 100;
-        splits.push({
-          memberId,
-          userId,
-          amount,
-          shareMode: "percent",
-          weight: percent,
-        });
+        percentEntries.push({ userId, memberId, percent });
       }
 
       // Verify percentages sum to 100
@@ -275,12 +268,20 @@ export async function calculateSplits(
         };
       }
 
-      // Handle rounding to ensure sum equals total
-      const currentSum = splits.reduce((sum, s) => sum + s.amount, 0);
-      const diff = Math.round((totalAmount - currentSum) * 100) / 100;
-      if (diff !== 0 && splits.length > 0) {
-        splits[0].amount = Math.round((splits[0].amount + diff) * 100) / 100;
-      }
+      // Use integer cents with weight-based distribution to avoid floating-point errors
+      const totalCents = toCents(totalAmount);
+      const percentWeights = percentEntries.map((e) => e.percent);
+      const centAmounts = splitByWeights(totalCents, percentWeights);
+
+      percentEntries.forEach((entry, index) => {
+        splits.push({
+          memberId: entry.memberId,
+          userId: entry.userId,
+          amount: fromCents(centAmounts[index]),
+          shareMode: "percent",
+          weight: entry.percent,
+        });
+      });
       break;
     }
 
@@ -309,23 +310,16 @@ export async function calculateSplits(
         return { splits: [], error: "Total weight cannot be zero" };
       }
 
-      let runningTotal = 0;
+      // Use integer cents with weight-based distribution to avoid floating-point errors
+      const totalCents = toCents(totalAmount);
+      const weights = weightEntries.map((e) => e.weight);
+      const centAmounts = splitByWeights(totalCents, weights);
+
       weightEntries.forEach((entry, index) => {
-        const isLast = index === weightEntries.length - 1;
-        let amount: number;
-
-        if (isLast) {
-          // Last person gets remainder to handle rounding
-          amount = Math.round((totalAmount - runningTotal) * 100) / 100;
-        } else {
-          amount = Math.round((totalAmount * entry.weight / totalWeight) * 100) / 100;
-          runningTotal += amount;
-        }
-
         splits.push({
           memberId: entry.memberId,
           userId: entry.userId,
-          amount,
+          amount: fromCents(centAmounts[index]),
           shareMode: "weight",
           weight: entry.weight,
         });
@@ -672,20 +666,29 @@ export async function getExpenseDetails(
       .innerJoin(users, eq(groupMembers.userId, users.id))
       .where(inArray(expenseItemMembers.itemId, itemIds));
 
-    // Calculate actual amounts for each split
-    const totalAmount = parseFloat(expense.subtotal);
-    const totalWeight = splitData.reduce(
-      (sum, s) => sum + parseFloat(s.weight || "1"),
-      0
-    );
+    // Calculate actual amounts for each split using integer cents
+    const totalCents = toCents(expense.subtotal);
+    const splitWeights = splitData.map((s) => parseFloat(s.weight || "1"));
+    const totalWeight = splitWeights.reduce((sum, w) => sum + w, 0);
 
-    splits = splitData.map((s) => {
+    // Pre-calculate weighted cent amounts for non-exact splits
+    const nonExactIndices = splitData.map((s, i) => s.shareMode !== "exact" || !s.exactAmount ? i : -1).filter((i) => i >= 0);
+    const nonExactWeights = nonExactIndices.map((i) => splitWeights[i]);
+    const exactCentsUsed = splitData.reduce((sum, s) => {
+      return s.shareMode === "exact" && s.exactAmount ? sum + toCents(s.exactAmount) : sum;
+    }, 0);
+    const remainingCents = totalCents - exactCentsUsed;
+    const weightedCents = nonExactWeights.length > 0
+      ? splitByWeights(remainingCents, nonExactWeights)
+      : [];
+
+    let weightedIdx = 0;
+    splits = splitData.map((s, i) => {
       let amount: number;
       if (s.shareMode === "exact" && s.exactAmount) {
-        amount = parseFloat(s.exactAmount);
+        amount = fromCents(toCents(s.exactAmount));
       } else {
-        const weight = parseFloat(s.weight || "1");
-        amount = Math.round((totalAmount * weight / totalWeight) * 100) / 100;
+        amount = fromCents(weightedCents[weightedIdx++]);
       }
 
       return {

@@ -11,7 +11,9 @@
  */
 
 import { Elysia, t } from "elysia";
+import { timingSafeEqual } from "crypto";
 import { success, error, ErrorCodes } from "../lib/responses";
+import { logger } from "../lib/logger";
 import {
   archiveOldActivityLogs,
   getArchivalStats,
@@ -31,12 +33,19 @@ const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
  * In production, you might want a more sophisticated auth mechanism
  */
 function validateAdminKey(apiKey: string | null): boolean {
-  if (!ADMIN_API_KEY) {
-    // If no admin key is configured, disallow admin access
-    console.warn("ADMIN_API_KEY is not configured - admin endpoints are disabled");
+  if (!ADMIN_API_KEY || !apiKey) {
+    if (!ADMIN_API_KEY) {
+      logger.warn("ADMIN_API_KEY is not configured - admin endpoints are disabled");
+    }
     return false;
   }
-  return apiKey === ADMIN_API_KEY;
+  // Use constant-time comparison to prevent timing attacks
+  const keyBuffer = Buffer.from(apiKey);
+  const secretBuffer = Buffer.from(ADMIN_API_KEY);
+  if (keyBuffer.length !== secretBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(keyBuffer, secretBuffer);
 }
 
 // ============================================================================

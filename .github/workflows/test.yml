@@ -49,10 +49,10 @@ jobs:
         run: bun run db:seed
 
       - name: Run unit tests
-        run: bun test src/__tests__/*.test.ts
+        run: bun test --coverage src/__tests__/*.test.ts
 
       - name: Run integration tests
-        run: bun test src/__tests__/integration/*.test.ts
+        run: bun test --coverage src/__tests__/integration/*.test.ts
 
   lint:
     runs-on: ubuntu-latest

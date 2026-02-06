@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { success, error, ErrorCodes } from "../lib/responses";
+import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
 import {
   createGroup,
@@ -784,7 +785,7 @@ export const groupRoutes = new Elysia({ prefix: "/groups" })
           };
         } catch (err) {
           // If conversion fails, return original currency with warning
-          console.error("Currency conversion failed:", err);
+          logger.error("Currency conversion failed", { error: String(err) });
         }
       }
 

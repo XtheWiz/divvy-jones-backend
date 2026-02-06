@@ -169,7 +169,7 @@ export function generateOAuthState(): string {
 
   const data = JSON.stringify(payload);
   const signature = crypto
-    .createHmac("sha256", GOOGLE_CLIENT_SECRET || "dev-secret")
+    .createHmac("sha256", GOOGLE_CLIENT_SECRET)
     .update(data)
     .digest("hex");
 
@@ -188,11 +188,17 @@ export function verifyOAuthState(state: string): OAuthStatePayload | null {
 
     // Verify signature
     const expectedSignature = crypto
-      .createHmac("sha256", GOOGLE_CLIENT_SECRET || "dev-secret")
+      .createHmac("sha256", GOOGLE_CLIENT_SECRET)
       .update(data)
       .digest("hex");
 
-    if (signature !== expectedSignature) return null;
+    // Use timing-safe comparison to prevent timing attacks on CSRF token
+    const sigBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+    if (sigBuffer.length !== expectedBuffer.length ||
+        !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return null;
+    }
 
     const payload: OAuthStatePayload = JSON.parse(data);
 
