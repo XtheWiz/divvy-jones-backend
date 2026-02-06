@@ -256,6 +256,9 @@ export async function calculateSplits(
         if (!memberId) {
           return { splits: [], error: `User ${userId} is not a member of the group` };
         }
+        if (percent < 0) {
+          return { splits: [], error: "Percentages cannot be negative" };
+        }
         totalPercent += percent;
         percentEntries.push({ userId, memberId, percent });
       }
