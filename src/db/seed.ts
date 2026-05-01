@@ -1,4 +1,5 @@
 import { db } from "./index";
+import { sql } from "drizzle-orm";
 import {
   // Enums
   authProviderType,
@@ -124,9 +125,50 @@ async function seedPlans() {
   console.log("Plans seeded.");
 }
 
+async function assertSeedSchema() {
+  const requiredTables = [
+    "auth_provider_type",
+    "membership_role",
+    "membership_status",
+    "group_icon",
+    "color_name",
+    "discount_mode",
+    "share_mode",
+    "settlement_status",
+    "evidence_target",
+    "leave_request_status",
+    "notification_type",
+    "activity_action",
+    "expense_category",
+    "recurring_frequency",
+    "currencies",
+    "plans",
+    "plan_features",
+  ];
+
+  const result = await db.execute<{ table_name: string }>(sql`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+  `);
+  const existingTables = new Set(result.rows.map((row) => row.table_name));
+  const missingTables = requiredTables.filter((tableName) => !existingTables.has(tableName));
+
+  if (missingTables.length > 0) {
+    throw new Error(
+      [
+        "Database schema is not ready for seeding.",
+        `Missing table(s): ${missingTables.join(", ")}`,
+        "Run `bun run db:push` first, or run `bun run db:setup` to apply the schema and seed in one step.",
+      ].join("\n")
+    );
+  }
+}
+
 export async function seed() {
   console.log("Starting database seed...");
 
+  await assertSeedSchema();
   await seedEnums();
   await seedCurrencies();
   await seedPlans();
@@ -135,4 +177,9 @@ export async function seed() {
 }
 
 // Run seed if called directly
-seed().catch(console.error);
+if (import.meta.main) {
+  seed().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

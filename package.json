@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:setup": "./scripts/db-setup.sh",
     "db:seed": "bun run src/db/seed.ts",
     "db:test:setup": "./scripts/test-db-setup.sh",
     "db:test:reset": "./scripts/test-db-reset.sh",

@@ -173,6 +173,32 @@ export async function joinGroup(
   groupId: string,
   role: string = "member"
 ): Promise<GroupMember> {
+  const [previousMembership] = await db
+    .select()
+    .from(groupMembers)
+    .where(
+      and(
+        eq(groupMembers.userId, userId),
+        eq(groupMembers.groupId, groupId)
+      )
+    )
+    .limit(1);
+
+  if (previousMembership) {
+    const [membership] = await db
+      .update(groupMembers)
+      .set({
+        role,
+        status: "active",
+        leftAt: null,
+        joinedAt: new Date(),
+      })
+      .where(eq(groupMembers.id, previousMembership.id))
+      .returning();
+
+    return membership;
+  }
+
   const [membership] = await db
     .insert(groupMembers)
     .values({

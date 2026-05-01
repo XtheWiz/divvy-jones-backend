@@ -14,6 +14,11 @@ if (!JWT_SECRET) {
     "Set a secure, random secret (minimum 32 characters recommended)."
   );
 }
+if (process.env.NODE_ENV === "production" && JWT_SECRET.length < 32) {
+  throw new Error(
+    "JWT_SECRET must be at least 32 characters in production."
+  );
+}
 const JWT_ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || "15m";
 
 // ============================================================================

@@ -48,14 +48,20 @@ A modern expense splitting application API built with Elysia.js and Bun.
    # Edit .env with your configuration
    ```
 
-4. Set up the database:
+4. Set up and seed the database:
    ```bash
-   bun run db:push
+   bun run db:setup
    ```
 
-5. (Optional) Seed the database:
+   If you manage schema and seed steps separately:
    ```bash
+   bun run db:push
    bun run db:seed
+   ```
+
+   For Docker Postgres, `db:setup` can create the database inside the container before applying the schema:
+   ```bash
+   POSTGRES_CONTAINER=your-postgres-container bun run db:setup
    ```
 
 6. Start the development server:

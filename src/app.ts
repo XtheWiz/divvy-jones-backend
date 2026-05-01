@@ -128,14 +128,6 @@ Auth endpoints are rate limited to 5 requests per minute per IP.
         },
         security: [{ bearerAuth: [] }],
       },
-      swagger: {
-        displayOperationId: false,
-        docExpansion: "list",
-        filter: true,
-        syntaxHighlight: {
-          theme: "monokai",
-        },
-      },
     })
   )
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }), {
