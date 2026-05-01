@@ -1,6 +1,8 @@
 import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import { routes } from "./routes";
+import { ErrorCodes, error as errorResponse } from "./lib/responses";
+import { logger } from "./lib/logger";
 
 // Default allowed origins for development and production
 const DEFAULT_CORS_ORIGINS = [
@@ -53,6 +55,52 @@ const corsMiddleware = new Elysia()
 
 export const app = new Elysia()
   .use(corsMiddleware)
+  .onRequest(({ request }) => {
+    logger.debug("HTTP request", {
+      method: request.method,
+      path: new URL(request.url).pathname,
+      userAgent: request.headers.get("user-agent") || undefined,
+    });
+  })
+  .onAfterHandle(({ request, set }) => {
+    logger.debug("HTTP response", {
+      method: request.method,
+      path: new URL(request.url).pathname,
+      status: set.status || 200,
+    });
+  })
+  .onError(({ code, error, request, set }) => {
+    const requestId = crypto.randomUUID();
+    const isProduction = process.env.NODE_ENV === "production";
+    const status = code === "NOT_FOUND" ? 404 : 500;
+    const message =
+      status === 404
+        ? "Route not found"
+        : isProduction
+          ? "Internal server error"
+          : error instanceof Error
+            ? error.message
+            : String(error);
+
+    set.status = status;
+    set.headers["x-request-id"] = requestId;
+
+    logger.error("HTTP request failed", {
+      requestId,
+      code,
+      method: request.method,
+      path: new URL(request.url).pathname,
+      status,
+      error: error instanceof Error ? error.message : String(error),
+      stack: !isProduction && error instanceof Error ? error.stack : undefined,
+    });
+
+    return errorResponse(
+      status === 404 ? ErrorCodes.NOT_FOUND : ErrorCodes.INTERNAL_ERROR,
+      message,
+      isProduction ? { requestId } : { requestId, code }
+    );
+  })
   .use(
     swagger({
       path: "/swagger",

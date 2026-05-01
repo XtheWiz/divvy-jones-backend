@@ -2,9 +2,14 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-// Create connection pool
-// Use DATABASE_URL_TEST only in test environment
-const connectionString = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
+// Create connection pool.
+// DATABASE_URL_TEST is intentionally used only for automated tests. Bun loads
+// .env for normal app runs, so preferring DATABASE_URL_TEST whenever it exists
+// makes the development server accidentally connect to the test database.
+const connectionString =
+  process.env.NODE_ENV === "test"
+    ? process.env.DATABASE_URL_TEST || process.env.DATABASE_URL
+    : process.env.DATABASE_URL;
 
 const pool = new Pool({
   connectionString,
