@@ -55,7 +55,7 @@ export const app = new Elysia()
   .use(corsMiddleware)
   .use(
     swagger({
-      path: "/docs",
+      path: "/swagger",
       documentation: {
         info: {
           title: "Divvy-Jones API",
